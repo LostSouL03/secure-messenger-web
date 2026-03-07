@@ -11,25 +11,50 @@
         <div class="bg-blur-circle"></div>
         <div class="login-box">
             <div class="lock-icon">🔒</div>
-            <h2>Welcome Back</h2>
-            <p>Enter your credentials to access secure relay</p>
-            
-            <div class="input-group">
-                <input type="text" id="usernameInput" placeholder="Username" required>
-            </div>
-            <div class="input-group">
-                <input type="password" id="keyInput" placeholder="Secret Auth Key" required>
-            </div>
-            
+            <h2>Secure Access</h2>
+            <p>Connect to the encrypted relay node</p>
+            <input type="text" id="usernameInput" placeholder="Username">
+            <input type="password" id="keyInput" placeholder="Secret Auth Key">
             <button id="loginBtn" class="primary-btn">ENTER SYSTEM</button>
-            <div class="login-footer">End-to-End Encrypted Node</div>
         </div>
     </div>
 
     <div id="main-container" style="display: none;">
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <div class="header-top">
+                    <span>CHATS <small id="relay-badge">🔒 Secure</small></span>
+                    <button id="gear-btn" onclick="openSettings()">⚙️</button>
+                </div>
+            </div>
+            <div id="contact-list"></div>
         </div>
+        
+        <div id="chat-window">
+            <div class="chat-header">
+                <span id="active-chat-user"></span>
+                <button id="callBtn" class="call-trigger" style="display: none;">📞 Call</button>
+            </div>
+            <div id="messages"></div>
+            <div class="input-area">
+                <button class="icon-btn" id="attachBtn">📎</button>
+                <input type="file" id="fileInput" style="display:none">
+                <button class="icon-btn" id="recordBtn">🎤</button>
+                <input type="text" id="messageInput" placeholder="Type a message">
+                <button id="sendBtn" class="send-btn">SEND</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-overlay" style="display:none;">
+        <div class="settings-box">
+            <h3>Settings</h3>
+            <button onclick="localStorage.clear(); location.reload();" class="danger-btn">Clear All Data</button>
+            <button onclick="document.getElementById('settings-overlay').style.display='none'" class="primary-btn" style="margin-top:10px;">Close</button>
+        </div>
+    </div>
 
     <script src="encryption.js"></script>
-    <script src="main.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
