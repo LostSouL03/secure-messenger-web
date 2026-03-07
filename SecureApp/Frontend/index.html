@@ -6,8 +6,8 @@
     <title>Secure Messenger Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
     <style>
-        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); --danger: #ff4b2b; }
-        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; --border: rgba(0,0,0,0.1); --danger: #ff4b2b; }
+        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); --danger: #ff4b2b; --warning: #ff9800; }
+        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; --border: rgba(0,0,0,0.1); --danger: #ff4b2b; --warning: #ed6c02; }
         
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; transition: 0.3s; overflow: hidden; }
         
@@ -16,26 +16,26 @@
         #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
         #localVideo { width: 140px; height: 100px; position: absolute; bottom: 90px; right: 20px; border: 2px solid var(--accent); border-radius: 10px; background: #222; transform: scaleX(-1); }
         .call-controls { position: absolute; bottom: 30px; display: flex; gap: 20px; }
-        .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--danger); color: white; }
+        .call-btn-end { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--danger); color: white; }
 
-        /* Status & Layout */
-        .status-light { width: 10px; height: 10px; border-radius: 50%; background: #555; }
-        .status-green { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        /* Layout */
         #main-container { display: flex; flex: 1; overflow: hidden; display: none; }
         #sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; }
         #sidebar.minimized { width: 0; overflow: hidden; }
         #chat-window { flex: 1; display: flex; flex-direction: column; background: var(--bg); }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); margin: 10px; border-radius: 12px; }
         
-        .message { max-width: 75%; padding: 10px; border-radius: 10px; box-shadow: 0 1px 1px rgba(0,0,0,0.2); line-height: 1.4; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); margin: 10px; border-radius: 12px; background: rgba(0,0,0,0.02); }
+        .message { max-width: 75%; padding: 10px; border-radius: 10px; box-shadow: 0 1px 1px rgba(0,0,0,0.2); line-height: 1.4; word-wrap: break-word; }
         .my-message { align-self: flex-end; background: var(--my-msg); }
         .partner-message { align-self: flex-start; background: var(--p-msg); }
-        .timestamp { font-size: 0.7em; opacity: 0.5; margin-left: 8px; }
+        
+        /* THE CALL BUTTON - STATE CONTROLLED */
+        .call-trigger { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .call-trigger.active-call { background: var(--warning); color: white; }
 
         .input-area { padding: 15px; background: var(--panel); display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); }
-        input { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input); color: var(--text); outline: none; }
-        .icon-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--accent); opacity: 0.8; transition: 0.2s; }
-        .icon-btn:hover { opacity: 1; transform: scale(1.1); }
+        input[type="text"] { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input); color: var(--text); outline: none; flex: 1; }
+        .icon-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--accent); }
         
         #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
         audio { margin-top: 8px; border-radius: 30px; height: 35px; width: 220px; }
@@ -50,16 +50,12 @@
         <video id="remoteVideo" autoplay playsinline></video>
         <video id="localVideo" autoplay playsinline muted></video>
         <div class="call-controls">
-            <button class="call-btn" onclick="endCall()">✖</button>
+            <button class="call-btn-end" onclick="endCall()">✖ Hang Up</button>
         </div>
     </div>
 
     <div id="login-screen">
         <h2>Secure Login</h2>
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px; font-size:0.9em;">
-            <div id="status-dot" class="status-light"></div>
-            <span id="status-text">Checking permissions...</span>
-        </div>
         <input type="text" id="usernameInput" placeholder="Username" style="width: 250px; margin-bottom: 10px;">
         <input type="password" id="keyInput" placeholder="Secret Auth Key" style="width: 250px; margin-bottom: 20px;">
         <button onclick="joinSession()" style="background:var(--accent); color:white; border:none; padding:12px 50px; border-radius:8px; cursor:pointer; font-weight:bold;">ENTER</button>
@@ -72,12 +68,12 @@
         </div>
 
         <div id="chat-window">
-            <div style="padding:12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border);">
+            <div style="padding:12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background: var(--panel);">
                 <div style="display:flex; align-items:center; gap:12px;">
                     <button onclick="toggleSidebar()" style="background:none; border:none; color:var(--accent); font-size:1.4em; cursor:pointer;">☰</button>
                     <span style="font-weight:bold;">Active Room</span>
                 </div>
-                <button class="icon-btn" onclick="startCall()">📞</button>
+                <button id="callBtn" class="call-trigger" onclick="handleCallButtonClick()">📞 Start Call</button>
             </div>
             
             <div id="messages"></div>
@@ -87,7 +83,7 @@
                 <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
                 <input type="file" id="fileInput" style="display:none" onchange="sendFile()">
                 <button id="recordBtn" class="icon-btn" onclick="toggleRecording()">🎤</button>
-                <input type="text" id="messageInput" placeholder="Message..." style="flex:1">
+                <input type="text" id="messageInput" placeholder="Message...">
                 <button onclick="sendTextMessage()" style="background:var(--accent); color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">SEND</button>
             </div>
         </div>
@@ -97,7 +93,7 @@
         let ws, myUsername, secretKey, pc, mediaStream, mediaRecorder, audioChunks = [], typingTimeout;
         const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-        // --- ENCRYPTION ---
+        // --- ENCRYPTION (AES-GCM) ---
         async function deriveKey(pw) {
             const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
             return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -117,72 +113,30 @@
             } catch (e) { return null; }
         }
 
-        // --- CORE SESSION & WEBSOCKET ---
-        function joinSession() {
-            myUsername = document.getElementById("usernameInput").value.trim() || "User";
-            secretKey = document.getElementById("keyInput").value;
-            if (!secretKey) return alert("Key required");
-            if ("Notification" in window) Notification.requestPermission().then(updateStatusLight);
-
-            const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-            ws = new WebSocket(`${protocol}${window.location.host}/ws`);
-            
-            ws.onopen = () => {
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("main-container").style.display = "flex";
-            };
-
-            ws.onmessage = async (e) => {
-                const dec = await decrypt(e.data);
-                if (!dec) return;
-                const data = JSON.parse(dec);
-                if (data.isSignal) handleSignal(data);
-                else if (data.type === "typing") {
-                    document.getElementById("typing-indicator").innerText = `${data.user} is typing...`;
-                    clearTimeout(typingTimeout);
-                    typingTimeout = setTimeout(() => document.getElementById("typing-indicator").innerText = "", 2000);
-                } else {
-                    renderMessage(data.user, data.content, "partner-message", data.time, data.type, data.filename);
-                    if (Notification.permission === "granted" && !document.hasFocus()) {
-                        new Notification(data.user, { body: data.content });
-                    }
-                }
-            };
-        }
-
-        // --- UNIFIED VOICE NOTES ---
-        async function toggleRecording() {
-            const btn = document.getElementById("recordBtn");
-            if (!mediaRecorder || mediaRecorder.state === "inactive") {
-                try {
-                    // Always request a fresh stream for audio recording to avoid conflicts
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = async () => {
-                        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                        const reader = new FileReader();
-                        reader.onload = async (ev) => {
-                            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            const enc = await encrypt(JSON.stringify({ user: myUsername, content: ev.target.result, type: "audio", time }));
-                            ws.send(enc);
-                            renderMessage("You", ev.target.result, "my-message", time, "audio");
-                        };
-                        reader.readAsDataURL(blob);
-                        stream.getTracks().forEach(t => t.stop()); // Release mic after recording
-                    };
-                    mediaRecorder.start();
-                    btn.innerText = "🛑"; btn.style.color = "red";
-                } catch (err) { alert("Mic Access Denied or Busy."); }
+        // --- CALL UI STATE CONTROL ---
+        function updateCallButton(inCall) {
+            const btn = document.getElementById("callBtn");
+            if (inCall) {
+                btn.innerText = "📞 In Call";
+                btn.classList.add("active-call");
             } else {
-                mediaRecorder.stop();
-                btn.innerText = "🎤"; btn.style.color = "var(--accent)";
+                btn.innerText = "📞 Start Call";
+                btn.classList.remove("active-call");
             }
         }
 
-        // --- VIDEO CALLS ---
+        function handleCallButtonClick() {
+            const btn = document.getElementById("callBtn");
+            if (btn.classList.contains("active-call")) {
+                document.getElementById("video-container").style.display = "flex"; // Re-open video if hidden
+            } else {
+                startCall();
+            }
+        }
+
+        // --- WEBRTC VIDEO ---
         async function startCall() {
+            updateCallButton(true);
             document.getElementById("video-container").style.display = "flex";
             mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById("localVideo").srcObject = mediaStream;
@@ -200,7 +154,8 @@
 
         async function handleSignal(data) {
             if (data.type === "offer") {
-                if (!confirm(`${data.user} is calling you. Answer?`)) return;
+                if (!confirm(`${data.user} is calling. Answer?`)) return;
+                updateCallButton(true);
                 document.getElementById("video-container").style.display = "flex";
                 mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById("localVideo").srcObject = mediaStream;
@@ -220,6 +175,7 @@
 
         function endCall(notify = true) {
             if (notify) sendSignal({ type: "hangup" });
+            updateCallButton(false);
             if (pc) pc.close();
             if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
             document.getElementById("video-container").style.display = "none";
@@ -231,16 +187,32 @@
             encrypt(JSON.stringify(signal)).then(enc => ws.send(enc));
         }
 
-        // --- UI HELPERS ---
-        function toggleSidebar() { document.getElementById("sidebar").classList.toggle("minimized"); }
-        function toggleTheme() {
-            const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-        function updateStatusLight() {
-            const dot = document.getElementById("status-dot"), text = document.getElementById("status-text");
-            if (Notification.permission === "granted") { text.innerText = "System Ready"; dot.className = "status-light status-green"; }
+        // --- CORE CHAT LOGIC ---
+        function joinSession() {
+            myUsername = document.getElementById("usernameInput").value.trim() || "User";
+            secretKey = document.getElementById("keyInput").value;
+            if (!secretKey) return alert("Key required");
+
+            const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
+            ws = new WebSocket(`${protocol}${window.location.host}/ws`);
+            
+            ws.onopen = () => {
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("main-container").style.display = "flex";
+            };
+
+            ws.onmessage = async (e) => {
+                const dec = await decrypt(e.data);
+                if (!dec) return;
+                const data = JSON.parse(dec);
+                if (data.isSignal) handleSignal(data);
+                else {
+                    renderMessage(data.user, data.content, "partner-message", data.time, data.type, data.filename);
+                    if (Notification.permission === "granted" && !document.hasFocus()) {
+                        new Notification(data.user, { body: data.content });
+                    }
+                }
+            };
         }
 
         async function sendTextMessage() {
@@ -266,10 +238,40 @@
             document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
         }
 
-        document.getElementById("messageInput").addEventListener("input", () => {
-            if (ws && ws.readyState === 1) encrypt(JSON.stringify({type: "typing", user: myUsername})).then(enc => ws.send(enc));
-        });
-        document.getElementById("messageInput").addEventListener("keypress", (e) => { if (e.key === "Enter") sendTextMessage(); });
+        // --- MISC ---
+        function toggleSidebar() { document.getElementById("sidebar").classList.toggle("minimized"); }
+        function toggleTheme() {
+            const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
+        }
+
+        async function toggleRecording() {
+            const btn = document.getElementById("recordBtn");
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(s);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const r = new FileReader();
+                    r.onload = async (ev) => {
+                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const enc = await encrypt(JSON.stringify({ user: myUsername, content: ev.target.result, type: "audio", time }));
+                        ws.send(enc);
+                        renderMessage("You", ev.target.result, "my-message", time, "audio");
+                    };
+                    r.readAsDataURL(blob);
+                    s.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start();
+                btn.innerText = "🛑"; btn.style.color = "red";
+            } else {
+                mediaRecorder.stop();
+                btn.innerText = "🎤"; btn.style.color = "var(--accent)";
+            }
+        }
     </script>
 </body>
 </html>
