@@ -6,29 +6,32 @@
     <title>Secure Messenger Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
     <style>
-        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); }
-        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; --border: rgba(0,0,0,0.1); }
+        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); --danger: #ff4b2b; }
+        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; --border: rgba(0,0,0,0.1); --danger: #ff4b2b; }
         
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; transition: 0.3s; overflow: hidden; }
         
-        /* Sidebar Styles */
-        #main-container { display: flex; flex: 1; overflow: hidden; display: none; } /* Hidden until login */
+        /* Status Light */
+        .status-container { display: flex; align-items: center; gap: 8px; font-size: 0.85em; margin-bottom: 20px; color: var(--text); opacity: 0.8; }
+        .status-light { width: 10px; height: 10px; border-radius: 50%; background: #555; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .status-green { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+        .status-red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+        /* Sidebar & Layout */
+        #main-container { display: flex; flex: 1; overflow: hidden; display: none; }
         #sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; }
         #sidebar.minimized { width: 0; overflow: hidden; border-right: none; }
         .sidebar-header { padding: 15px; font-weight: bold; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .chat-list-item { padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: var(--accent); color: white; margin: 5px; border-radius: 8px; }
 
-        /* Chat Window Styles */
         #chat-window { flex: 1; display: flex; flex-direction: column; background: var(--bg); position: relative; border-left: 1px solid var(--border); }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); margin: 10px; border-radius: 12px; background: rgba(0,0,0,0.02); }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); margin: 10px; border-radius: 12px; }
         
-        /* Message Bubbles */
         .message { max-width: 75%; padding: 10px; border-radius: 10px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.2); }
         .my-message { align-self: flex-end; background: var(--my-msg); }
         .partner-message { align-self: flex-start; background: var(--p-msg); }
         .timestamp { font-size: 0.7em; opacity: 0.5; margin-left: 10px; }
         
-        /* Controls */
         #theme-toggle { position: fixed; top: 10px; right: 10px; z-index: 1000; padding: 8px 15px; border-radius: 20px; cursor: pointer; background: var(--accent); color: white; border: none; font-weight: bold; }
         .input-area { padding: 15px; background: var(--panel); display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); }
         input[type="text"], input[type="password"] { padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--input); color: var(--text); }
@@ -45,20 +48,28 @@
     <button id="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
 
     <div id="login-screen">
-        <h2>Secure Login</h2>
+        <h2 style="margin-bottom: 10px;">Secure Login</h2>
+        
+        <div class="status-container" id="notif-status-box">
+            <div id="status-dot" class="status-light"></div>
+            <span id="status-text">Notifications: Checking...</span>
+        </div>
+
         <input type="text" id="usernameInput" placeholder="Username" style="width: 250px; margin-bottom: 10px;">
         <input type="password" id="keyInput" placeholder="Secret Auth Key" style="width: 250px; margin-bottom: 20px;">
+        
         <div style="display: flex; gap: 10px;">
-            <button onclick="joinSession()" style="background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Start</button>
-            <button onclick="testNotification()" style="background: #555; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">Ping</button>
+            <button onclick="joinSession()" style="background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold;">Start Session</button>
+            <button onclick="testNotification()" style="background: #444; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">Ping Test</button>
         </div>
+        <p style="font-size: 0.7em; margin-top: 20px; opacity: 0.5;">End-to-End Encrypted Relay</p>
     </div>
 
     <div id="main-container">
         <div id="sidebar">
             <div class="sidebar-header">
-                <span>Chats</span>
-                <button onclick="toggleSidebar()" style="background:none; border:none; color:var(--text); cursor:pointer; font-size:1.2em;">✕</button>
+                <span>Active Chats</span>
+                <button onclick="toggleSidebar()" style="background:none; border:none; color:var(--text); cursor:pointer;">✕</button>
             </div>
             <div class="chat-list-item">
                 <strong>🔒 Secure Relay</strong><br>
@@ -68,8 +79,8 @@
 
         <div id="chat-window">
             <div style="padding: 10px; display: flex; align-items: center; gap: 10px;">
-                <button id="sidebar-open" onclick="toggleSidebar()" style="background:none; border:none; color:var(--accent); font-size:1.5em; cursor:pointer;">☰</button>
-                <h4 style="margin:0">Active Session</h4>
+                <button id="sidebar-open" onclick="toggleSidebar()" style="background:none; border:none; color:var(--accent); font-size: 1.5em; cursor:pointer;">☰</button>
+                <h4 style="margin:0">Cloud Session</h4>
             </div>
             <div id="messages"></div>
             <div id="typing-indicator"></div>
@@ -78,7 +89,7 @@
                 <input type="file" id="fileInput" style="display:none" onchange="sendFile()">
                 <button id="recordBtn" class="icon-btn" onclick="toggleRecording()">🎤</button>
                 <input type="text" id="messageInput" placeholder="Type a message..." style="flex:1">
-                <button id="send-btn" onclick="sendTextMessage()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Send</button>
+                <button id="send-btn" onclick="sendTextMessage()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">Send</button>
             </div>
         </div>
     </div>
@@ -86,23 +97,51 @@
     <script>
         let ws, myUsername, secretKey, mediaRecorder, audioChunks = [], typingTimeout;
 
-        function toggleSidebar() {
-            document.getElementById("sidebar").classList.toggle("minimized");
+        // --- NEW STATUS LIGHT LOGIC ---
+        function updateStatusLight() {
+            const dot = document.getElementById("status-dot");
+            const text = document.getElementById("status-text");
+            
+            if (!("Notification" in window)) {
+                text.innerText = "Notifications: Not Supported";
+                dot.className = "status-light status-red";
+                return;
+            }
+
+            if (Notification.permission === "granted") {
+                text.innerText = "Notifications: Ready";
+                dot.className = "status-light status-green";
+            } else if (Notification.permission === "denied") {
+                text.innerText = "Notifications: Blocked (Fix in Browser)";
+                dot.className = "status-light status-red";
+            } else {
+                text.innerText = "Notifications: Click Ping to Enable";
+                dot.className = "status-light";
+            }
         }
 
+        // Auto-check on load
+        window.onload = updateStatusLight;
+
+        function testNotification() {
+            Notification.requestPermission().then(p => {
+                updateStatusLight();
+                if (p === "granted") {
+                    new Notification("Success!", { body: "Your system is ready for secure alerts." });
+                } else {
+                    alert("Please allow notifications in your browser settings (click the Lock icon 🔒).");
+                }
+            });
+        }
+
+        // --- EXISTING LOGIC ---
+        function toggleSidebar() { document.getElementById("sidebar").classList.toggle("minimized"); }
         function toggleTheme() {
             const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
             document.documentElement.setAttribute('data-theme', t);
             localStorage.setItem('theme', t);
         }
         document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
-
-        function testNotification() {
-            Notification.requestPermission().then(p => {
-                if (p === "granted") new Notification("Test Success!", { body: "Notifications are active!" });
-                else alert("Notifications blocked by browser!");
-            });
-        }
 
         async function deriveKey(pw) {
             const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
@@ -127,15 +166,12 @@
             myUsername = document.getElementById("usernameInput").value.trim() || "User";
             secretKey = document.getElementById("keyInput").value;
             if (!secretKey) return alert("Key required");
-
             const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
             ws = new WebSocket(`${protocol}${window.location.host}/ws`);
-
             ws.onopen = () => {
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("main-container").style.display = "flex";
             };
-
             ws.onmessage = async (e) => {
                 const dec = await decrypt(e.data);
                 if (!dec) return;
@@ -211,11 +247,9 @@
             else if (type === "image") body += `<br><img src="${content}" class="chat-img">`;
             else if (type === "audio") body += `<br><audio controls src="${content}"></audio>`;
             else body += `<br>📄 <a href="${content}" download="${filename}" style="color:var(--accent)">${filename}</a>`;
-            
             div.innerHTML = `${body} <span class="timestamp">${time}</span>`;
             document.getElementById("messages").appendChild(div);
             document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-            document.getElementById("typing-indicator").innerText = "";
         }
 
         document.getElementById("messageInput").addEventListener("input", () => {
