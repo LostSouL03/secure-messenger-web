@@ -3,61 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Messenger</title>
+    <title>Secure Messenger Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
     <style>
-        /* CSS Variables for easy theme switching */
-        :root {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --input-bg: #2a3942;
-            --panel-bg: #202c33;
-            --my-msg: #005c4b;
-            --partner-msg: #202c33;
-            --accent: #00a884;
-        }
-
-        [data-theme="light"] {
-            --bg-color: #f0f2f5;
-            --text-color: #111b21;
-            --input-bg: #ffffff;
-            --panel-bg: #f0f2f5;
-            --my-msg: #d9fdd3;
-            --partner-msg: #ffffff;
-            --accent: #00a884;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            display: flex; flex-direction: column; height: 100vh; margin: 0; 
-            transition: background 0.3s ease;
-        }
-
-        #theme-toggle {
-            position: absolute; top: 20px; right: 20px;
-            background: var(--accent); color: white; border: none;
-            padding: 8px 12px; border-radius: 20px; cursor: pointer; z-index: 100;
-        }
-
+        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; }
+        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; }
+        
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; transition: 0.3s; }
+        #theme-toggle { position: fixed; top: 10px; right: 10px; z-index: 1000; padding: 8px 15px; border-radius: 20px; cursor: pointer; background: var(--accent); color: white; border: none; font-weight: bold; }
+        
         #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
         #chat-screen { display: none; flex-direction: column; height: 100%; }
         
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { 
-            max-width: 70%; padding: 10px; border-radius: 10px; word-wrap: break-word; 
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-        }
-        .my-message { align-self: flex-end; background-color: var(--my-msg); color: var(--text-color); }
-        .partner-message { align-self: flex-start; background-color: var(--partner-msg); color: var(--text-color); }
+        .message { max-width: 75%; padding: 10px; border-radius: 10px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.2); }
+        .my-message { align-self: flex-end; background: var(--my-msg); }
+        .partner-message { align-self: flex-start; background: var(--p-msg); }
+        .timestamp { font-size: 0.7em; opacity: 0.5; margin-left: 10px; }
         
-        .timestamp { font-size: 0.7em; opacity: 0.6; margin-left: 8px; }
-        #typing-indicator { color: var(--accent); font-size: 0.8em; height: 1.2em; margin-left: 20px; margin-bottom: 5px; }
+        .input-area { padding: 15px; background: var(--panel); display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(0,0,0,0.1); }
+        input[type="text"], input[type="password"] { padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); background: var(--input); color: var(--text); }
         
-        .input-area { padding: 20px; background-color: var(--panel-bg); display: flex; gap: 10px; border-top: 1px solid rgba(0,0,0,0.1); }
-        input { padding: 12px; border: none; border-radius: 8px; background: var(--input-bg); color: var(--text-color); border: 1px solid rgba(0,0,0,0.1); }
-        button#send-btn { padding: 10px 20px; border: none; border-radius: 8px; background: var(--accent); color: white; cursor: pointer; }
+        .icon-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--accent); padding: 5px; }
+        #send-btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+        #typing-indicator { padding: 0 25px 5px; font-size: 0.8em; color: var(--accent); height: 15px; }
+        
+        audio { max-width: 100%; margin-top: 5px; }
+        img.chat-img { max-width: 100%; border-radius: 5px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -65,75 +37,70 @@
     <button id="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
 
     <div id="login-screen">
-        <h2>Secure Session Login</h2>
-        <input type="text" id="usernameInput" placeholder="Username" style="margin-bottom:10px; width: 250px;"><br>
-        <input type="password" id="keyInput" placeholder="Secret Auth Key" style="margin-bottom:20px; width: 250px;"><br>
-        <button onclick="joinSession()" style="background: var(--accent); color: white; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer;">Start Secure Session</button>
+        <h2>Secure Login</h2>
+        <input type="text" id="usernameInput" placeholder="Username" style="width: 250px; margin-bottom: 10px;">
+        <input type="password" id="keyInput" placeholder="Secret Auth Key" style="width: 250px; margin-bottom: 20px;">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="joinSession()" style="background: var(--accent); color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Start</button>
+            <button onclick="testNotification()" style="background: #555; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">Ping Test</button>
+        </div>
     </div>
 
     <div id="chat-screen">
         <div id="messages"></div>
         <div id="typing-indicator"></div>
         <div class="input-area">
+            <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+            <input type="file" id="fileInput" style="display:none" onchange="sendFile()">
+            <button id="recordBtn" class="icon-btn" onclick="toggleRecording()">🎤</button>
             <input type="text" id="messageInput" placeholder="Type a message..." style="flex:1">
             <button id="send-btn" onclick="sendTextMessage()">Send</button>
         </div>
     </div>
 
     <script>
-        let ws;
-        let myUsername = "";
-        let secretKey = "";
-        let typingTimeout;
+        let ws, myUsername, secretKey, mediaRecorder, audioChunks = [], typingTimeout;
 
-        // --- THEME LOGIC ---
+        // --- THEME & PING ---
         function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
-            const target = current === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', target);
-            localStorage.setItem('theme', target);
+            const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('theme', t);
         }
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
 
-        // --- ENCRYPTION LOGIC ---
-        async function deriveKey(password) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(password);
-            const hash = await crypto.subtle.digest('SHA-256', data);
+        function testNotification() {
+            Notification.requestPermission().then(p => {
+                if (p === "granted") new Notification("Test Success!", { body: "Notifications are active!" });
+                else alert("Notifications blocked by browser!");
+            });
+        }
+
+        // --- ENCRYPTION ---
+        async function deriveKey(pw) {
+            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
             return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
         }
-
-        async function encryptMessage(text) {
-            const key = await deriveKey(secretKey);
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const encodedText = new TextEncoder().encode(text);
-            const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encodedText);
-            const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-            combined.set(iv);
-            combined.set(new Uint8Array(ciphertext), iv.length);
-            return btoa(String.fromCharCode(...combined));
+        async function encrypt(text) {
+            const key = await deriveKey(secretKey), iv = crypto.getRandomValues(new Uint8Array(12));
+            const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+            const comb = new Uint8Array(iv.length + enc.byteLength);
+            comb.set(iv); comb.set(new Uint8Array(enc), iv.length);
+            return btoa(String.fromCharCode(...comb));
         }
-
-        async function decryptMessage(data) {
+        async function decrypt(data) {
             try {
-                const key = await deriveKey(secretKey);
-                const binary = Uint8Array.from(atob(data), c => c.charCodeAt(0));
-                const iv = binary.slice(0, 12);
-                const ciphertext = binary.slice(12);
-                const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-                return new TextDecoder().decode(decrypted);
+                const key = await deriveKey(secretKey), bin = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+                const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0, 12) }, key, bin.slice(12));
+                return new TextDecoder().decode(dec);
             } catch (e) { return null; }
         }
 
-        // --- SESSION LOGIC ---
+        // --- CORE CHAT ---
         function joinSession() {
-            if ("Notification" in window) Notification.requestPermission();
-
-            myUsername = document.getElementById("usernameInput").value.trim() || "Anonymous";
+            myUsername = document.getElementById("usernameInput").value.trim() || "User";
             secretKey = document.getElementById("keyInput").value;
-            if (!secretKey) return alert("Key required!");
+            if (!secretKey) return alert("Key required");
 
             const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
             ws = new WebSocket(`${protocol}${window.location.host}/ws`);
@@ -143,61 +110,93 @@
                 document.getElementById("chat-screen").style.display = "flex";
             };
 
-            ws.onmessage = async (event) => {
-                const decrypted = await decryptMessage(event.data);
-                if (!decrypted) return;
-                const data = JSON.parse(decrypted);
-
+            ws.onmessage = async (e) => {
+                const dec = await decrypt(e.data);
+                if (!dec) return;
+                const data = JSON.parse(dec);
                 if (data.type === "typing") {
-                    handleTypingUI(data.user);
+                    document.getElementById("typing-indicator").innerText = `${data.user} is typing...`;
+                    clearTimeout(typingTimeout);
+                    typingTimeout = setTimeout(() => document.getElementById("typing-indicator").innerText = "", 2000);
                 } else {
-                    renderMessage(data.user, data.content, "partner-message", data.time);
+                    renderMessage(data.user, data.content, "partner-message", data.time, data.type, data.filename);
                     if (Notification.permission === "granted" && !document.hasFocus()) {
-                        new Notification(`Message from ${data.user}`, { body: data.content });
+                        new Notification(data.user, { body: data.type === "text" ? data.content : `Sent a ${data.type}` });
                     }
                 }
             };
         }
 
-        function handleTypingUI(user) {
-            const el = document.getElementById("typing-indicator");
-            el.innerText = `${user} is typing...`;
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => el.innerText = "", 2000);
-        }
-
-        document.getElementById("messageInput").addEventListener("input", () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                encryptMessage(JSON.stringify({type: "typing", user: myUsername})).then(enc => ws.send(enc));
-            }
-        });
-
         async function sendTextMessage() {
-            const input = document.getElementById("messageInput");
-            const text = input.value.trim();
-            if (!text || !ws) return;
-
+            const input = document.getElementById("messageInput"), txt = input.value.trim();
+            if (!txt) return;
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const payload = JSON.stringify({ user: myUsername, content: text, type: "text", time: time });
-            const encrypted = await encryptMessage(payload);
-            ws.send(encrypted);
-            renderMessage("You", text, "my-message", time);
+            const enc = await encrypt(JSON.stringify({ user: myUsername, content: txt, type: "text", time }));
+            ws.send(enc);
+            renderMessage("You", txt, "my-message", time, "text");
             input.value = "";
         }
 
-        function renderMessage(user, content, className, time) {
+        // --- FILE & VOICE ---
+        async function sendFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const type = file.type.startsWith('image/') ? 'image' : 'file';
+                const enc = await encrypt(JSON.stringify({ user: myUsername, content: e.target.result, type, filename: file.name, time }));
+                ws.send(enc);
+                renderMessage("You", e.target.result, "my-message", time, type, file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function toggleRecording() {
+            const btn = document.getElementById("recordBtn");
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const enc = await encrypt(JSON.stringify({ user: myUsername, content: e.target.result, type: "audio", time }));
+                        ws.send(enc);
+                        renderMessage("You", e.target.result, "my-message", time, "audio");
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                btn.innerText = "🛑"; btn.style.color = "red";
+            } else {
+                mediaRecorder.stop();
+                btn.innerText = "🎤"; btn.style.color = "var(--accent)";
+            }
+        }
+
+        function renderMessage(user, content, className, time, type, filename) {
             const div = document.createElement("div");
             div.className = `message ${className}`;
-            div.innerHTML = `<strong>${user}:</strong> ${content} <span class="timestamp">${time}</span>`;
+            let body = `<strong>${user}:</strong> `;
+            if (type === "text") body += content;
+            else if (type === "image") body += `<br><img src="${content}" class="chat-img">`;
+            else if (type === "audio") body += `<br><audio controls src="${content}"></audio>`;
+            else body += `<br>📄 <a href="${content}" download="${filename}" style="color:var(--accent)">${filename}</a>`;
+            
+            div.innerHTML = `${body} <span class="timestamp">${time}</span>`;
             document.getElementById("messages").appendChild(div);
             document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
             document.getElementById("typing-indicator").innerText = "";
         }
 
-        // Allow 'Enter' key to send message
-        document.getElementById("messageInput").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") sendTextMessage();
+        document.getElementById("messageInput").addEventListener("input", () => {
+            if (ws && ws.readyState === 1) encrypt(JSON.stringify({type: "typing", user: myUsername})).then(enc => ws.send(enc));
         });
+        document.getElementById("messageInput").addEventListener("keypress", (e) => { if (e.key === "Enter") sendTextMessage(); });
     </script>
 </body>
 </html>
