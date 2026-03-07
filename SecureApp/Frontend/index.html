@@ -22,12 +22,16 @@
     <div id="main-container" style="display: none;">
         <div id="sidebar">
             <div class="sidebar-header">
-                <div class="header-top">
+                <div class="header-center">
                     <span>CHATS <small id="relay-badge">🔒 Secure</small></span>
-                    <button id="gear-btn" onclick="openSettings()">⚙️</button>
                 </div>
             </div>
+            
             <div id="contact-list"></div>
+
+            <div class="sidebar-footer">
+                <button id="gear-btn" onclick="openSettings()">⚙️ Settings</button>
+            </div>
         </div>
         
         <div id="chat-window">
@@ -46,11 +50,18 @@
         </div>
     </div>
 
-    <div id="settings-overlay" style="display:none;">
+    <div id="settings-overlay" class="overlay">
         <div class="settings-box">
-            <h3>Settings</h3>
-            <button onclick="localStorage.clear(); location.reload();" class="danger-btn">Clear All Data</button>
-            <button onclick="document.getElementById('settings-overlay').style.display='none'" class="primary-btn" style="margin-top:10px;">Close</button>
+            <h3>System Settings</h3>
+            <div class="setting-row">
+                <span>Light Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <button onclick="localStorage.clear(); location.reload();" class="danger-btn">Wipe Data</button>
+            <button onclick="closeSettings()" class="primary-btn" style="margin-top:15px;">Close</button>
         </div>
     </div>
 
