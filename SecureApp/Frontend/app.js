@@ -7,20 +7,26 @@ document.getElementById('loginBtn').onclick = () => {
     secretKey = document.getElementById("keyInput").value;
     if (!secretKey) return alert("Secret Key is required!");
 
+    // This connects to the /ws route in your main.py
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
     
     ws.onopen = () => {
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("main-container").style.display = "flex";
+        console.log("Connected to Python Backend");
     };
 
     ws.onmessage = async (e) => {
         const dec = await decrypt(e.data, secretKey);
         if (!dec) return;
         const data = JSON.parse(dec);
-        if (data.isSignal) handleSignal(data);
-        else renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+        
+        if (data.isSignal) {
+            handleSignal(data);
+        } else {
+            renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+        }
     };
 };
 
@@ -38,45 +44,53 @@ function renderMsg(user, content, cls, time, type, fname) {
     div.className = `message ${cls}`;
     let inner = `<strong>${user}</strong><br>`;
     
-    if (type === "text") inner += content;
-    else if (type === "audio") inner += `<audio controls src="${content}" style="width:200px"></audio>`;
-    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:#00a884">📄 ${fname}</a>`;
+    if (type === "text") {
+        inner += content;
+    } else if (type === "audio") {
+        inner += `<audio controls src="${content}" style="width:200px; display:block; margin-top:5px;"></audio>`;
+    } else if (type === "file") {
+        inner += `<a href="${content}" download="${fname}" style="color:#00a884; text-decoration:none; font-weight:bold;">📄 ${fname}</a>`;
+    }
     
-    div.innerHTML = `${inner}<div style="font-size:10px; opacity:0.5; text-align:right;">${time}</div>`;
+    div.innerHTML = `${inner}<div style="font-size:10px; opacity:0.5; text-align:right; margin-top:5px;">${time}</div>`;
     document.getElementById("messages").appendChild(div);
     document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
 }
 
-// --- 3. VOICE RECORDING ---
+// --- 3. 🎤 VOICE RECORDING ---
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
         this.classList.remove("recording-active");
     } else {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const reader = new FileReader();
-            reader.onloadend = () => sendPayload(reader.result, "audio");
-            reader.readAsDataURL(new Blob(audioChunks));
-        };
-        mediaRecorder.start();
-        this.classList.add("recording-active");
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const reader = new FileReader();
+                reader.onloadend = () => sendPayload(reader.result, "audio");
+                reader.readAsDataURL(new Blob(audioChunks));
+                stream.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorder.start();
+            this.classList.add("recording-active");
+        } catch (err) { alert("Mic access denied"); }
     }
 };
 
-// --- 4. FILE SHARING ---
+// --- 4. 📎 FILE SHARING ---
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onloadend = () => sendPayload(reader.result, "file", file.name);
     reader.readAsDataURL(file);
 };
 
-// --- 5. VIDEO CALLING ---
+// --- 5. 📞 VIDEO CALLING (WebRTC) ---
 async function startCall() {
     document.getElementById("video-container").style.display = "flex";
     mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -91,7 +105,7 @@ async function startCall() {
 
 async function handleSignal(d) {
     if (d.type === "offer") {
-        if (confirm("Answer incoming call?")) {
+        if (confirm(`${d.user} is calling. Answer?`)) {
             await startCall();
             await pc.setRemoteDescription(new RTCSessionDescription(d.offer));
             const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
@@ -109,9 +123,12 @@ function endCall(notify = true) {
     document.getElementById("video-container").style.display = "none";
 }
 
-function sendSignal(s) { s.isSignal = true; s.user = myUsername; encrypt(JSON.stringify(s), secretKey).then(e => ws.send(e)); }
+function sendSignal(s) {
+    s.isSignal = true; s.user = myUsername;
+    encrypt(JSON.stringify(s), secretKey).then(e => ws.send(e));
+}
 
-// Events
+// Global Bindings
 document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value.trim()) { sendPayload(i.value.trim()); i.value = ""; }
