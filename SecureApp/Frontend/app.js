@@ -2,17 +2,24 @@ let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
 
-// --- LOGOUT ---
-function logout() {
-    if (ws) ws.close();
-    document.getElementById("main-container").style.display = "none";
-    document.getElementById("login-screen").style.display = "flex";
-    document.getElementById("settings-overlay").style.display = "none";
-    myUsername = ""; secretKey = "";
-    document.getElementById("messages").innerHTML = "";
-    document.getElementById("active-chat-user").innerText = "";
-    document.getElementById("callBtn").style.display = "none";
-}
+// --- THEME & SETUP ---
+window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-toggle').checked = true;
+    }
+});
+
+document.getElementById('theme-toggle').onchange = (e) => {
+    const isLight = e.target.checked;
+    document.body.classList.toggle('light-mode', isLight);
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+};
+
+function logout() { location.reload(); }
+function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
+function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
 
 // --- LOGIN ---
 document.getElementById('loginBtn').onclick = () => {
@@ -35,7 +42,7 @@ document.getElementById('loginBtn').onclick = () => {
         const data = JSON.parse(dec);
         if (data.user !== myUsername) {
             addContact(data.user);
-            updateStatus(data.user, true); // Set dot to green when they message
+            updateStatus(data.user, true);
             renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
         }
     };
@@ -64,12 +71,8 @@ function displayContact(u) {
 }
 
 function updateStatus(user, isOnline) {
-    const contactEl = document.getElementById(`contact-${user}`);
-    if (contactEl) {
-        const dot = contactEl.querySelector('.status-dot');
-        if (isOnline) dot.classList.add('status-online');
-        else dot.classList.remove('status-online');
-    }
+    const el = document.getElementById(`contact-${user}`);
+    if (el) el.querySelector('.status-dot').classList.toggle('status-online', isOnline);
 }
 
 // --- MESSAGING ---
@@ -79,9 +82,9 @@ function renderMsg(user, content, cls, time, type, fname) {
     let inner = `<strong>${user}</strong><br>`;
     if (type === "text") inner += content;
     else if (type === "audio") inner += `<audio controls src="${content}"></audio>`;
-    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:#00a884; font-weight:bold;">📄 ${fname}</a>`;
+    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 ${fname}</a>`;
     
-    div.innerHTML = `${inner}<div class="timestamp" style="font-size:10px; opacity:0.5; text-align:right;">${time}</div>`;
+    div.innerHTML = `${inner}<div style="font-size:10px; opacity:0.5; text-align:right; margin-top:4px;">${time}</div>`;
     const m = document.getElementById("messages");
     m.appendChild(div);
     m.scrollTop = m.scrollHeight;
@@ -94,7 +97,14 @@ async function send(content, type="text", fname="") {
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
-// --- TOOLS ---
+// --- CONTROLS ---
+document.getElementById('contactSearch').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.contact-item').forEach(it => {
+        it.style.display = it.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+    });
+};
+
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
     const f = e.target.files[0];
@@ -106,6 +116,7 @@ document.getElementById("fileInput").onchange = (e) => {
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
+        this.classList.remove("recording-active");
     } else {
         const s = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(s);
@@ -119,6 +130,7 @@ document.getElementById("recordBtn").onclick = async function() {
             s.getTracks().forEach(t => t.stop());
         };
         mediaRecorder.start();
+        this.classList.add("recording-active");
     }
 };
 
@@ -126,13 +138,4 @@ document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value.trim()) { send(i.value.trim()); i.value = ""; }
 };
-
-document.getElementById('contactSearch').oninput = (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.contact-item').forEach(item => {
-        item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
-    });
-};
-
-function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
-function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
+document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
