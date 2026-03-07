@@ -2,7 +2,7 @@ let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
 
-// --- INITIALIZATION & THEME ---
+// --- THEME & SETUP ---
 window.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -20,7 +20,21 @@ document.getElementById('theme-toggle').onchange = (e) => {
     localStorage.setItem('theme', mode);
 };
 
-// --- SEARCH CONTACTS ---
+// --- LOGOUT ---
+function logout() {
+    if (ws) ws.close();
+    document.getElementById("main-container").style.display = "none";
+    document.getElementById("login-screen").style.display = "flex";
+    document.getElementById("settings-overlay").style.display = "none";
+    myUsername = ""; secretKey = "";
+    document.getElementById("usernameInput").value = "";
+    document.getElementById("keyInput").value = "";
+    document.getElementById("messages").innerHTML = "";
+    document.getElementById("active-chat-user").innerText = "";
+    document.getElementById("callBtn").style.display = "none";
+}
+
+// --- SEARCH ---
 document.getElementById('contactSearch').oninput = (e) => {
     const term = e.target.value.toLowerCase();
     document.querySelectorAll('.contact-item').forEach(item => {
@@ -32,7 +46,6 @@ document.getElementById('contactSearch').oninput = (e) => {
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
-
     if (!myUsername || !secretKey) return alert("Username and Key required");
 
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
@@ -48,7 +61,6 @@ document.getElementById('loginBtn').onclick = () => {
         const dec = await decrypt(e.data, secretKey);
         if (!dec) return;
         const data = JSON.parse(dec);
-        
         if (data.user !== myUsername) {
             addContact(data.user);
             renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
@@ -77,69 +89,58 @@ function displayContact(u) {
     list.appendChild(item);
 }
 
-// --- RENDERING ---
+// --- MESSAGING ---
 function renderMsg(user, content, cls, time, type, fname) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
     let inner = `<strong>${user}</strong><br>`;
     
-    if (type === "text") {
-        inner += content;
-    } else if (type === "audio") {
-        // MIME type set specifically to ensure player works
-        inner += `<audio controls src="${content}"></audio>`;
-    } else if (type === "file") {
-        inner += `<a href="${content}" download="${fname}" style="color:var(--accent); text-decoration:none; font-weight:bold;">📄 ${fname}</a>`;
-    }
+    if (type === "text") inner += content;
+    else if (type === "audio") inner += `<audio controls src="${content}"></audio>`;
+    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 ${fname}</a>`;
     
     div.innerHTML = `${inner}<div class="timestamp">${time}</div>`;
-    document.getElementById("messages").appendChild(div);
-    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+    const msgBox = document.getElementById("messages");
+    msgBox.appendChild(div);
+    msgBox.scrollTop = msgBox.scrollHeight;
 }
 
-// --- SENDING ---
 async function send(content, type="text", fname="") {
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    const payload = JSON.stringify({user:myUsername, content, type, time, fname});
-    const enc = await encrypt(payload, secretKey);
+    const enc = await encrypt(JSON.stringify({user:myUsername, content, type, time, fname}), secretKey);
     ws.send(enc);
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
-// --- FILE INPUT ---
+// --- FILE & VOICE ---
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => send(reader.result, "file", file.name);
-    reader.readAsDataURL(file);
+    const f = e.target.files[0];
+    const r = new FileReader();
+    r.onloadend = () => send(r.result, "file", f.name);
+    r.readAsDataURL(f);
 };
 
-// --- VOICE RECORDING (FIXED PLAYBACK) ---
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
         this.classList.remove("recording-active");
     } else {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(s);
             audioChunks = [];
-            
             mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                const reader = new FileReader();
-                reader.onloadend = () => send(reader.result, "audio");
-                reader.readAsDataURL(audioBlob);
-                stream.getTracks().forEach(t => t.stop());
+                const b = new Blob(audioChunks, { type: 'audio/webm' });
+                const r = new FileReader();
+                r.onloadend = () => send(r.result, "audio");
+                r.readAsDataURL(b);
+                s.getTracks().forEach(t => t.stop());
             };
-            
             mediaRecorder.start();
             this.classList.add("recording-active");
-        } catch (err) { alert("Microphone access denied."); }
+        } catch (err) { alert("Mic denied."); }
     }
 };
 
