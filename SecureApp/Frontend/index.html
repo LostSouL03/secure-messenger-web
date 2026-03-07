@@ -8,10 +8,9 @@
         :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); --danger: #ff4b2b; --warning: #ff9800; }
         body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
         
-        /* LOGIN BOX - CENTERED */
+        /* LOGIN BOX */
         #login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; background: var(--bg); position: fixed; top: 0; left: 0; z-index: 1000; }
         .login-box { background: var(--panel); padding: 40px; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .login-box h2 { margin-bottom: 20px; }
         .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid var(--border); background: var(--input); color: var(--text); box-sizing: border-box; outline: none; }
         
         /* CHAT LAYOUT */
@@ -22,22 +21,25 @@
         
         /* MESSAGES */
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 0.95em; }
+        .message { max-width: 70%; padding: 10px; border-radius: 8px; font-size: 0.95em; position: relative; }
         .my-message { align-self: flex-end; background: var(--my-msg); }
         .partner-message { align-self: flex-start; background: var(--p-msg); }
         
-        /* INPUTS & BUTTONS */
+        /* INPUT AREA */
         .input-area { padding: 15px; background: var(--panel); display: flex; gap: 10px; align-items: center; }
-        .input-area input { flex: 1; padding: 12px; border-radius: 20px; border: none; background: var(--input); color: var(--text); outline: none; }
-        .primary-btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
-        .call-trigger { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-        .call-trigger.active-call { background: var(--warning); }
-        
-        /* VIDEO CALL OVERLAY */
+        .input-area input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: none; background: var(--input); color: var(--text); outline: none; }
+        .icon-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--accent); padding: 5px; transition: 0.2s; }
+        .icon-btn:active { transform: scale(0.9); }
+        .primary-btn { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        /* RECORDING ANIMATION */
+        .recording { color: var(--danger) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* VIDEO CALL */
         #video-container { display: none; position: fixed; inset: 0; background: #000; z-index: 2000; }
         #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
         #localVideo { width: 140px; height: 100px; position: absolute; bottom: 80px; right: 20px; border: 2px solid var(--accent); border-radius: 10px; transform: scaleX(-1); }
-        .call-btn-end { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 60px; height: 60px; border-radius: 50%; background: var(--danger); color: white; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -45,7 +47,7 @@
     <div id="video-container">
         <video id="remoteVideo" autoplay playsinline></video>
         <video id="localVideo" autoplay playsinline muted></video>
-        <button id="hangupBtn" class="call-btn-end">✖</button>
+        <button id="hangupBtn" style="position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:60px; height:60px; border-radius:50%; background:var(--danger); border:none; color:white; cursor:pointer; font-size:20px;">✖</button>
     </div>
 
     <div id="login-screen">
@@ -53,34 +55,36 @@
             <h2>Secure Login</h2>
             <input type="text" id="usernameInput" placeholder="Username">
             <input type="password" id="keyInput" placeholder="Secret Auth Key">
-            <button id="loginBtn" class="primary-btn">ENTER</button>
+            <button id="loginBtn" class="primary-btn" style="width:100%">ENTER</button>
         </div>
     </div>
 
     <div id="main-container">
         <div id="sidebar">
             <div style="padding:20px; font-weight:bold; border-bottom:1px solid var(--border)">CHATS</div>
-            <div style="padding:15px; background:var(--accent); margin:10px; border-radius:8px; cursor:pointer;">🔒 Secure Relay</div>
+            <div style="padding:15px; background:var(--accent); margin:10px; border-radius:8px;">🔒 Secure Relay</div>
         </div>
         <div id="chat-window">
             <div class="chat-header">
                 <span>Active Room</span>
-                <button id="callBtn" class="call-trigger">📞 Start Call</button>
+                <button id="callBtn" style="background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-weight:bold;">📞 Start Call</button>
             </div>
             <div id="messages"></div>
             <div class="input-area">
+                <button class="icon-btn" id="attachBtn">📎</button>
+                <input type="file" id="fileInput" style="display:none">
+                <button class="icon-btn" id="recordBtn">🎤</button>
                 <input type="text" id="messageInput" placeholder="Message...">
-                <button id="sendBtn" class="primary-btn" style="width:auto">SEND</button>
+                <button id="sendBtn" class="primary-btn">SEND</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- ALL LOGIC IN ONE PLACE ---
-        let ws, myUsername, secretKey, pc, mediaStream;
+        let ws, myUsername, secretKey, pc, mediaStream, mediaRecorder, audioChunks = [];
         const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-        // Encryption logic
+        // --- ENCRYPTION ---
         async function deriveKey(pw) {
             const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
             return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -100,7 +104,7 @@
             } catch (e) { return null; }
         }
 
-        // Login Handler
+        // --- LOGIN ---
         document.getElementById('loginBtn').onclick = () => {
             myUsername = document.getElementById("usernameInput").value.trim() || "User";
             secretKey = document.getElementById("keyInput").value;
@@ -119,42 +123,73 @@
                 if (!dec) return;
                 const data = JSON.parse(dec);
                 if (data.isSignal) handleSignal(data);
-                else renderMessage(data.user, data.content, "partner-message", data.time);
+                else renderMessage(data.user, data.content, "partner-message", data.time, data.type, data.filename);
             };
         };
 
-        // Message Handler
-        async function sendMsg() {
-            const input = document.getElementById("messageInput");
-            if (!input.value.trim()) return;
+        // --- MESSAGING (Text, Voice, Files) ---
+        async function sendMessage(content, type = "text", filename = "") {
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const enc = await encrypt(JSON.stringify({ user: myUsername, content: input.value, time }), secretKey);
+            const payload = JSON.stringify({ user: myUsername, content, type, time, filename });
+            const enc = await encrypt(payload, secretKey);
             ws.send(enc);
-            renderMessage("You", input.value, "my-message", time);
-            input.value = "";
+            renderMessage("You", content, "my-message", time, type, filename);
         }
 
-        function renderMessage(user, content, className, time) {
+        function renderMessage(user, content, className, time, type, filename) {
             const div = document.createElement("div");
             div.className = `message ${className}`;
-            div.innerHTML = `<strong>${user}</strong><br>${content}<div style="font-size:10px; opacity:0.5; text-align:right;">${time}</div>`;
+            let body = `<strong>${user}</strong><br>`;
+            
+            if (type === "text") body += content;
+            else if (type === "audio") body += `<audio controls src="${content}"></audio>`;
+            else if (type === "file") body += `<a href="${content}" download="${filename}" style="color:var(--accent)">📄 ${filename}</a>`;
+            
+            div.innerHTML = `${body}<div style="font-size:10px; opacity:0.5; text-align:right; margin-top:5px;">${time}</div>`;
             document.getElementById("messages").appendChild(div);
             document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
         }
 
-        // Call Handler
-        const callBtn = document.getElementById('callBtn');
-        callBtn.onclick = async () => {
-            if (callBtn.classList.contains("active-call")) {
-                document.getElementById("video-container").style.display = "flex";
+        // Voice Recording
+        document.getElementById("recordBtn").onclick = async function() {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                this.classList.remove("recording");
             } else {
-                startCall();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => sendMessage(reader.result, "audio");
+                    reader.readAsDataURL(blob);
+                };
+                mediaRecorder.start();
+                this.classList.add("recording");
             }
         };
 
+        // File Sharing
+        document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
+        document.getElementById("fileInput").onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onloadend = () => sendMessage(reader.result, "file", file.name);
+            reader.readAsDataURL(file);
+        };
+
+        // --- CALLS ---
+        // (Call logic remains the same as previous functional version)
+        const callBtn = document.getElementById('callBtn');
+        callBtn.onclick = async () => {
+            if (callBtn.classList.contains("active-call")) { document.getElementById("video-container").style.display = "flex"; }
+            else { startCall(); }
+        };
         async function startCall() {
-            callBtn.innerText = "📞 In Call";
-            callBtn.classList.add("active-call");
+            callBtn.innerText = "📞 In Call"; callBtn.classList.add("active-call");
             document.getElementById("video-container").style.display = "flex";
             mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById("localVideo").srcObject = mediaStream;
@@ -162,41 +197,36 @@
             mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
             pc.onicecandidate = e => { if (e.candidate) sendSignal({ type: "candidate", candidate: e.candidate }); };
             pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; };
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
+            const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
             sendSignal({ type: "offer", offer });
         }
-
         async function handleSignal(data) {
             if (data.type === "offer") {
                 if (!confirm(`${data.user} is calling. Answer?`)) return;
-                await startCall();
-                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
+                await startCall(); await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
                 sendSignal({ type: "answer", answer });
             } else if (data.type === "answer") await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
             else if (data.type === "candidate") await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
             else if (data.type === "hangup") endCall(false);
         }
-
         function endCall(notify = true) {
             if (notify) sendSignal({ type: "hangup" });
-            callBtn.innerText = "📞 Start Call";
-            callBtn.classList.remove("active-call");
-            if (pc) pc.close();
-            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            callBtn.innerText = "📞 Start Call"; callBtn.classList.remove("active-call");
+            if (pc) pc.close(); if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
             document.getElementById("video-container").style.display = "none";
         }
-
         function sendSignal(signal) {
             signal.isSignal = true; signal.user = myUsername;
             encrypt(JSON.stringify(signal), secretKey).then(enc => ws.send(enc));
         }
 
-        document.getElementById("sendBtn").onclick = sendMsg;
+        document.getElementById("sendBtn").onclick = () => {
+            const msg = document.getElementById("messageInput").value;
+            if(msg) { sendMessage(msg, "text"); document.getElementById("messageInput").value = ""; }
+        };
+        document.getElementById("messageInput").onkeypress = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
         document.getElementById("hangupBtn").onclick = () => endCall(true);
-        document.getElementById("messageInput").onkeypress = (e) => { if(e.key === "Enter") sendMsg(); };
     </script>
 </body>
 </html>
