@@ -134,73 +134,8 @@ document.getElementById("recordBtn").onclick = async function() {
     }
 };
 
-// --- TYPING INDICATORS ---
-let typingTimeout;
-function sendTypingStatus() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        // Send a specialized 'typing' packet
-        encrypt(JSON.stringify({ user: myUsername, type: "typing" }), secretKey).then(enc => {
-            ws.send(enc);
-        });
-    }
-}
-
-// Add this into your existing messageInput onkeydown/input logic
-document.getElementById("messageInput").oninput = () => {
-    clearTimeout(typingTimeout);
-    sendTypingStatus();
-    typingTimeout = setTimeout(() => {
-        // Stop typing status after 3 seconds of no input
-    }, 3000);
-};
-
-// Update your ws.onmessage logic to handle the 'typing' type
-ws.onmessage = async (e) => {
-    const dec = await decrypt(e.data, secretKey);
-    if (!dec) return;
-    const data = JSON.parse(dec);
-
-    if (data.user !== myUsername) {
-        if (data.type === "typing") {
-            showTyping(data.user);
-        } else {
-            addContact(data.user);
-            updateStatus(data.user, true);
-            renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
-            hideTyping(data.user);
-        }
-    }
-};
-
-function showTyping(user) {
-    const el = document.getElementById(`contact-${user}`);
-    if (el) {
-        let typingNode = el.querySelector('.typing-indicator');
-        if (!typingNode) {
-            typingNode = document.createElement('small');
-            typingNode.className = 'typing-indicator';
-            typingNode.style.color = 'var(--accent)';
-            typingNode.style.display = 'block';
-            typingNode.innerText = 'typing...';
-            el.appendChild(typingNode);
-        }
-        // Auto-remove after a few seconds if no more signals come
-        clearTimeout(el.typingTimer);
-        el.typingTimer = setTimeout(() => hideTyping(user), 4000);
-    }
-}
-
-function hideTyping(user) {
-    const el = document.getElementById(`contact-${user}`);
-    if (el) {
-        const typingNode = el.querySelector('.typing-indicator');
-        if (typingNode) typingNode.remove();
-    }
-}
-
 document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value.trim()) { send(i.value.trim()); i.value = ""; }
 };
 document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
-
