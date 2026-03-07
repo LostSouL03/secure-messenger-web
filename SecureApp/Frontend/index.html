@@ -7,6 +7,20 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div id="settings-overlay">
+        <div class="settings-box">
+            <h3>Settings</h3>
+            <div class="setting-item">
+                <span>Dark Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <button onclick="closeSettings()" class="primary-btn">Done</button>
+        </div>
+    </div>
+
     <div id="video-container">
         <video id="remoteVideo" autoplay playsinline></video>
         <video id="localVideo" autoplay playsinline muted></video>
@@ -24,12 +38,18 @@
 
     <div id="main-container">
         <div id="sidebar">
-            <div class="sidebar-header">CHATS</div>
-            <div class="sidebar-item">🔒 Secure Relay</div>
+            <div class="sidebar-header">
+                <div class="header-top">
+                    <span>CHATS <small id="relay-badge">🔒 Secure</small></span>
+                    <button id="gear-btn" onclick="openSettings()">⚙️</button>
+                </div>
+            </div>
+            <div id="contact-list">
+                </div>
         </div>
         <div id="chat-window">
             <div class="chat-header">
-                <span id="chat-title">Active Room</span>
+                <span id="active-chat-user">Select a contact</span>
                 <button id="callBtn" class="call-trigger">📞 Call</button>
             </div>
             <div id="messages"></div>
