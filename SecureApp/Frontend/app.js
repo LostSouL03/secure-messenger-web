@@ -2,24 +2,6 @@ let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
 
-// --- THEME & SETUP ---
-window.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-        document.getElementById('theme-toggle').checked = true;
-    }
-});
-
-function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
-function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
-
-document.getElementById('theme-toggle').onchange = (e) => {
-    const mode = e.target.checked ? 'light' : 'dark';
-    document.body.classList.toggle('light-mode', e.target.checked);
-    localStorage.setItem('theme', mode);
-};
-
 // --- LOGOUT ---
 function logout() {
     if (ws) ws.close();
@@ -27,26 +9,16 @@ function logout() {
     document.getElementById("login-screen").style.display = "flex";
     document.getElementById("settings-overlay").style.display = "none";
     myUsername = ""; secretKey = "";
-    document.getElementById("usernameInput").value = "";
-    document.getElementById("keyInput").value = "";
     document.getElementById("messages").innerHTML = "";
     document.getElementById("active-chat-user").innerText = "";
     document.getElementById("callBtn").style.display = "none";
 }
 
-// --- SEARCH ---
-document.getElementById('contactSearch').oninput = (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.contact-item').forEach(item => {
-        item.style.display = item.innerText.toLowerCase().includes(term) ? 'block' : 'none';
-    });
-};
-
 // --- LOGIN ---
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
-    if (!myUsername || !secretKey) return alert("Username and Key required");
+    if (!myUsername || !secretKey) return alert("Credentials Required");
 
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
@@ -63,6 +35,7 @@ document.getElementById('loginBtn').onclick = () => {
         const data = JSON.parse(dec);
         if (data.user !== myUsername) {
             addContact(data.user);
+            updateStatus(data.user, true); // Set dot to green when they message
             renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
         }
     };
@@ -79,7 +52,8 @@ function displayContact(u) {
     const list = document.getElementById('contact-list');
     const item = document.createElement('div');
     item.className = 'contact-item';
-    item.innerHTML = `<span>${u}</span>`;
+    item.id = `contact-${u}`;
+    item.innerHTML = `<span class="status-dot"></span><span>${u}</span>`;
     item.onclick = () => {
         document.getElementById('active-chat-user').innerText = u;
         document.getElementById('callBtn').style.display = 'block';
@@ -89,20 +63,28 @@ function displayContact(u) {
     list.appendChild(item);
 }
 
+function updateStatus(user, isOnline) {
+    const contactEl = document.getElementById(`contact-${user}`);
+    if (contactEl) {
+        const dot = contactEl.querySelector('.status-dot');
+        if (isOnline) dot.classList.add('status-online');
+        else dot.classList.remove('status-online');
+    }
+}
+
 // --- MESSAGING ---
 function renderMsg(user, content, cls, time, type, fname) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
     let inner = `<strong>${user}</strong><br>`;
-    
     if (type === "text") inner += content;
     else if (type === "audio") inner += `<audio controls src="${content}"></audio>`;
-    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 ${fname}</a>`;
+    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:#00a884; font-weight:bold;">📄 ${fname}</a>`;
     
-    div.innerHTML = `${inner}<div class="timestamp">${time}</div>`;
-    const msgBox = document.getElementById("messages");
-    msgBox.appendChild(div);
-    msgBox.scrollTop = msgBox.scrollHeight;
+    div.innerHTML = `${inner}<div class="timestamp" style="font-size:10px; opacity:0.5; text-align:right;">${time}</div>`;
+    const m = document.getElementById("messages");
+    m.appendChild(div);
+    m.scrollTop = m.scrollHeight;
 }
 
 async function send(content, type="text", fname="") {
@@ -112,7 +94,7 @@ async function send(content, type="text", fname="") {
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
-// --- FILE & VOICE ---
+// --- TOOLS ---
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
     const f = e.target.files[0];
@@ -124,23 +106,19 @@ document.getElementById("fileInput").onchange = (e) => {
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-        this.classList.remove("recording-active");
     } else {
-        try {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(s);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-            mediaRecorder.onstop = () => {
-                const b = new Blob(audioChunks, { type: 'audio/webm' });
-                const r = new FileReader();
-                r.onloadend = () => send(r.result, "audio");
-                r.readAsDataURL(b);
-                s.getTracks().forEach(t => t.stop());
-            };
-            mediaRecorder.start();
-            this.classList.add("recording-active");
-        } catch (err) { alert("Mic denied."); }
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(s);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+            const b = new Blob(audioChunks, { type: 'audio/webm' });
+            const r = new FileReader();
+            r.onloadend = () => send(r.result, "audio");
+            r.readAsDataURL(b);
+            s.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start();
     }
 };
 
@@ -148,4 +126,13 @@ document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value.trim()) { send(i.value.trim()); i.value = ""; }
 };
-document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
+
+document.getElementById('contactSearch').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.contact-item').forEach(item => {
+        item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+    });
+};
+
+function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
+function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
