@@ -17,30 +17,6 @@ body.light-mode {
     --my-msg: #d9fdd3;
 }
 
-.contact-item {
-    display: flex;
-    flex-direction: column; /* Stack name and typing indicator */
-    align-items: center;
-    justify-content: center;
-    padding: 12px;
-}
-
-.contact-item span {
-    font-weight: 500;
-}
-
-.typing-indicator {
-    font-style: italic;
-    font-size: 0.75rem;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.5; }
-    50% { opacity: 1; }
-    100% { opacity: 0.5; }
-}
-
 body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
 
 /* REVERTED LOGIN */
@@ -90,5 +66,3 @@ input:checked + .slider:before { transform: translateX(22px); }
 #messageInput { flex: 1; padding: 12px 20px; border-radius: 25px; border: none; background: #2a3942; color: white; outline: none; }
 .icon-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #8696a0; }
 .recording-active { color: #ff4b2b !important; }
-
-
