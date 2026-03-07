@@ -8,7 +8,7 @@ app = FastAPI()
 # --- 1. FILE SERVING SETUP ---
 # This finds the exact path to your folders, no matter where you run the script from
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+FRONTEND_DIR = os.path.join(BASE_DIR, "Frontend")
 
 # Tell FastAPI where to find your CSS and JS folders
 app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
@@ -54,4 +54,5 @@ async def websocket_endpoint(websocket: WebSocket):
             await manager.broadcast(data, websocket)
     except WebSocketDisconnect:
         # If a user closes the tab or loses connection, remove them
+
         manager.disconnect(websocket)
