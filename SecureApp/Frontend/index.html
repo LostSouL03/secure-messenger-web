@@ -5,273 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Messenger Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
-    <style>
-        :root { --bg: #121212; --text: #ffffff; --panel: #202c33; --input: #2a3942; --accent: #00a884; --my-msg: #005c4b; --p-msg: #202c33; --border: rgba(255,255,255,0.1); --danger: #ff4b2b; --warning: #ff9800; }
-        [data-theme="light"] { --bg: #f0f2f5; --text: #111b21; --panel: #ffffff; --input: #ffffff; --accent: #00a884; --my-msg: #d9fdd3; --p-msg: #ffffff; --border: rgba(0,0,0,0.1); --danger: #ff4b2b; --warning: #ed6c02; }
-        
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; transition: 0.3s; overflow: hidden; }
-        
-        /* Video Overlay */
-        #video-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 2000; flex-direction: column; align-items: center; justify-content: center; }
-        #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
-        #localVideo { width: 140px; height: 100px; position: absolute; bottom: 90px; right: 20px; border: 2px solid var(--accent); border-radius: 10px; background: #222; transform: scaleX(-1); }
-        .call-controls { position: absolute; bottom: 30px; display: flex; gap: 20px; }
-        .call-btn-end { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--danger); color: white; }
-
-        /* Layout */
-        #main-container { display: flex; flex: 1; overflow: hidden; display: none; }
-        #sidebar { width: 260px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; }
-        #sidebar.minimized { width: 0; overflow: hidden; }
-        #chat-window { flex: 1; display: flex; flex-direction: column; background: var(--bg); }
-        
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); margin: 10px; border-radius: 12px; background: rgba(0,0,0,0.02); }
-        .message { max-width: 75%; padding: 10px; border-radius: 10px; box-shadow: 0 1px 1px rgba(0,0,0,0.2); line-height: 1.4; word-wrap: break-word; }
-        .my-message { align-self: flex-end; background: var(--my-msg); }
-        .partner-message { align-self: flex-start; background: var(--p-msg); }
-        
-        /* THE CALL BUTTON - STATE CONTROLLED */
-        .call-trigger { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-        .call-trigger.active-call { background: var(--warning); color: white; }
-
-        .input-area { padding: 15px; background: var(--panel); display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border); }
-        input[type="text"] { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--input); color: var(--text); outline: none; flex: 1; }
-        .icon-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--accent); }
-        
-        #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
-        audio { margin-top: 8px; border-radius: 30px; height: 35px; width: 220px; }
-        img.chat-img { max-width: 100%; border-radius: 8px; margin-top: 8px; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <button id="theme-toggle" onclick="toggleTheme()" style="position:fixed; top:10px; right:10px; z-index:1000; background:var(--accent); color:white; border:none; padding:8px 15px; border-radius:20px; cursor:pointer;">🌓 Theme</button>
+    <button id="theme-toggle">🌓 Theme</button>
 
     <div id="video-container">
         <video id="remoteVideo" autoplay playsinline></video>
         <video id="localVideo" autoplay playsinline muted></video>
         <div class="call-controls">
-            <button class="call-btn-end" onclick="endCall()">✖ Hang Up</button>
+            <button class="call-btn-end" id="hangupBtn">✖</button>
         </div>
     </div>
 
     <div id="login-screen">
-        <h2>Secure Login</h2>
-        <input type="text" id="usernameInput" placeholder="Username" style="width: 250px; margin-bottom: 10px;">
-        <input type="password" id="keyInput" placeholder="Secret Auth Key" style="width: 250px; margin-bottom: 20px;">
-        <button onclick="joinSession()" style="background:var(--accent); color:white; border:none; padding:12px 50px; border-radius:8px; cursor:pointer; font-weight:bold;">ENTER</button>
+        <div class="login-box">
+            <h2>Secure Login</h2>
+            <div class="status-indicator">
+                <div id="status-dot"></div>
+                <span id="status-text">Checking permissions...</span>
+            </div>
+            <input type="text" id="usernameInput" placeholder="Username">
+            <input type="password" id="keyInput" placeholder="Secret Auth Key">
+            <button id="loginBtn" class="primary-btn">ENTER</button>
+        </div>
     </div>
 
     <div id="main-container">
         <div id="sidebar">
-            <div style="padding:15px; font-weight:bold; border-bottom:1px solid var(--border);">CHATS</div>
-            <div style="padding:15px; background:var(--accent); color:white; margin:8px; border-radius:8px; cursor:pointer;">🔒 Secure Relay</div>
+            <div class="sidebar-header">CHATS</div>
+            <div class="sidebar-item">🔒 Secure Relay</div>
         </div>
 
         <div id="chat-window">
-            <div style="padding:12px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); background: var(--panel);">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <button onclick="toggleSidebar()" style="background:none; border:none; color:var(--accent); font-size:1.4em; cursor:pointer;">☰</button>
-                    <span style="font-weight:bold;">Active Room</span>
+            <div class="chat-header">
+                <div class="header-info">
+                    <button id="sidebar-toggle">☰</button>
+                    <span>Active Room</span>
                 </div>
-                <button id="callBtn" class="call-trigger" onclick="handleCallButtonClick()">📞 Start Call</button>
+                <button id="callBtn" class="call-trigger">📞 Start Call</button>
             </div>
             
             <div id="messages"></div>
-            <div id="typing-indicator" style="padding:0 25px 5px; color:var(--accent); font-size:0.8em; height:15px;"></div>
+            <div id="typing-indicator"></div>
 
             <div class="input-area">
-                <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-                <input type="file" id="fileInput" style="display:none" onchange="sendFile()">
-                <button id="recordBtn" class="icon-btn" onclick="toggleRecording()">🎤</button>
+                <button class="icon-btn" id="attachBtn">📎</button>
+                <input type="file" id="fileInput" style="display:none">
+                <button id="recordBtn" class="icon-btn">🎤</button>
                 <input type="text" id="messageInput" placeholder="Message...">
-                <button onclick="sendTextMessage()" style="background:var(--accent); color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">SEND</button>
+                <button id="sendBtn" class="primary-btn">SEND</button>
             </div>
         </div>
     </div>
 
-    <script>
-        let ws, myUsername, secretKey, pc, mediaStream, mediaRecorder, audioChunks = [], typingTimeout;
-        const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-
-        // --- ENCRYPTION (AES-GCM) ---
-        async function deriveKey(pw) {
-            const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-            return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-        }
-        async function encrypt(text) {
-            const key = await deriveKey(secretKey), iv = crypto.getRandomValues(new Uint8Array(12));
-            const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
-            const comb = new Uint8Array(iv.length + enc.byteLength);
-            comb.set(iv); comb.set(new Uint8Array(enc), iv.length);
-            return btoa(String.fromCharCode(...comb));
-        }
-        async function decrypt(data) {
-            try {
-                const key = await deriveKey(secretKey), bin = Uint8Array.from(atob(data), c => c.charCodeAt(0));
-                const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bin.slice(0, 12) }, key, bin.slice(12));
-                return new TextDecoder().decode(dec);
-            } catch (e) { return null; }
-        }
-
-        // --- CALL UI STATE CONTROL ---
-        function updateCallButton(inCall) {
-            const btn = document.getElementById("callBtn");
-            if (inCall) {
-                btn.innerText = "📞 In Call";
-                btn.classList.add("active-call");
-            } else {
-                btn.innerText = "📞 Start Call";
-                btn.classList.remove("active-call");
-            }
-        }
-
-        function handleCallButtonClick() {
-            const btn = document.getElementById("callBtn");
-            if (btn.classList.contains("active-call")) {
-                document.getElementById("video-container").style.display = "flex"; // Re-open video if hidden
-            } else {
-                startCall();
-            }
-        }
-
-        // --- WEBRTC VIDEO ---
-        async function startCall() {
-            updateCallButton(true);
-            document.getElementById("video-container").style.display = "flex";
-            mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById("localVideo").srcObject = mediaStream;
-
-            pc = new RTCPeerConnection(config);
-            mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
-
-            pc.onicecandidate = e => { if (e.candidate) sendSignal({ type: "candidate", candidate: e.candidate }); };
-            pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; };
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal({ type: "offer", offer });
-        }
-
-        async function handleSignal(data) {
-            if (data.type === "offer") {
-                if (!confirm(`${data.user} is calling. Answer?`)) return;
-                updateCallButton(true);
-                document.getElementById("video-container").style.display = "flex";
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById("localVideo").srcObject = mediaStream;
-                pc = new RTCPeerConnection(config);
-                mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
-                pc.onicecandidate = e => { if (e.candidate) sendSignal({ type: "candidate", candidate: e.candidate }); };
-                pc.ontrack = e => { document.getElementById("remoteVideo").srcObject = e.streams[0]; };
-                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                sendSignal({ type: "answer", answer });
-            } 
-            else if (data.type === "answer") await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-            else if (data.type === "candidate") await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-            else if (data.type === "hangup") endCall(false);
-        }
-
-        function endCall(notify = true) {
-            if (notify) sendSignal({ type: "hangup" });
-            updateCallButton(false);
-            if (pc) pc.close();
-            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-            document.getElementById("video-container").style.display = "none";
-            pc = null;
-        }
-
-        function sendSignal(signal) {
-            signal.user = myUsername; signal.isSignal = true;
-            encrypt(JSON.stringify(signal)).then(enc => ws.send(enc));
-        }
-
-        // --- CORE CHAT LOGIC ---
-        function joinSession() {
-            myUsername = document.getElementById("usernameInput").value.trim() || "User";
-            secretKey = document.getElementById("keyInput").value;
-            if (!secretKey) return alert("Key required");
-
-            const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-            ws = new WebSocket(`${protocol}${window.location.host}/ws`);
-            
-            ws.onopen = () => {
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("main-container").style.display = "flex";
-            };
-
-            ws.onmessage = async (e) => {
-                const dec = await decrypt(e.data);
-                if (!dec) return;
-                const data = JSON.parse(dec);
-                if (data.isSignal) handleSignal(data);
-                else {
-                    renderMessage(data.user, data.content, "partner-message", data.time, data.type, data.filename);
-                    if (Notification.permission === "granted" && !document.hasFocus()) {
-                        new Notification(data.user, { body: data.content });
-                    }
-                }
-            };
-        }
-
-        async function sendTextMessage() {
-            const input = document.getElementById("messageInput"), txt = input.value.trim();
-            if (!txt) return;
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const enc = await encrypt(JSON.stringify({ user: myUsername, content: txt, type: "text", time }));
-            ws.send(enc);
-            renderMessage("You", txt, "my-message", time, "text");
-            input.value = "";
-        }
-
-        function renderMessage(user, content, className, time, type, filename) {
-            const div = document.createElement("div");
-            div.className = `message ${className}`;
-            let body = `<strong>${user}:</strong> `;
-            if (type === "text") body += content;
-            else if (type === "image") body += `<br><img src="${content}" class="chat-img">`;
-            else if (type === "audio") body += `<br><audio controls src="${content}"></audio>`;
-            else body += `<br>📄 <a href="${content}" download="${filename}" style="color:var(--accent)">${filename}</a>`;
-            div.innerHTML = `${body} <span class="timestamp">${time}</span>`;
-            document.getElementById("messages").appendChild(div);
-            document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
-        }
-
-        // --- MISC ---
-        function toggleSidebar() { document.getElementById("sidebar").classList.toggle("minimized"); }
-        function toggleTheme() {
-            const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', t);
-            localStorage.setItem('theme', t);
-        }
-
-        async function toggleRecording() {
-            const btn = document.getElementById("recordBtn");
-            if (!mediaRecorder || mediaRecorder.state === "inactive") {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(s);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const r = new FileReader();
-                    r.onload = async (ev) => {
-                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const enc = await encrypt(JSON.stringify({ user: myUsername, content: ev.target.result, type: "audio", time }));
-                        ws.send(enc);
-                        renderMessage("You", ev.target.result, "my-message", time, "audio");
-                    };
-                    r.readAsDataURL(blob);
-                    s.getTracks().forEach(t => t.stop());
-                };
-                mediaRecorder.start();
-                btn.innerText = "🛑"; btn.style.color = "red";
-            } else {
-                mediaRecorder.stop();
-                btn.innerText = "🎤"; btn.style.color = "var(--accent)";
-            }
-        }
-    </script>
+    <script src="encryption.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
