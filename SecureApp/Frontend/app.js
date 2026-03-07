@@ -2,6 +2,24 @@ let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
 
+// Theme & Initialization
+window.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('theme-toggle').checked = true;
+    }
+});
+
+function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
+function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
+
+document.getElementById('theme-toggle').onchange = (e) => {
+    const mode = e.target.checked ? 'light' : 'dark';
+    document.body.classList.toggle('light-mode', e.target.checked);
+    localStorage.setItem('theme', mode);
+};
+
 // Login Logic
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
@@ -44,7 +62,7 @@ function displayContact(u) {
     item.innerHTML = `<span>${u}</span>`;
     item.onclick = () => {
         document.getElementById('active-chat-user').innerText = u;
-        document.getElementById('callBtn').style.display = 'block'; // Show call icon only now
+        document.getElementById('callBtn').style.display = 'block';
         document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
     };
@@ -59,8 +77,7 @@ function renderMsg(user, content, cls, time, type, fname) {
     if (type === "text") {
         inner += content;
     } else if (type === "audio") {
-        // Controls added here for play/length
-        inner += `<audio controls src="${content}" style="width:100%; max-width:250px; margin-top:5px;"></audio>`;
+        inner += `<audio controls src="${content}" style="width:100%; max-width:220px; margin-top:5px;"></audio>`;
     } else if (type === "file") {
         inner += `<a href="${content}" download="${fname}" style="color:var(--accent)">📄 ${fname}</a>`;
     }
@@ -77,11 +94,11 @@ async function send(content, type="text", fname="") {
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
-// Fixed Voice Recording (Single Send)
+// Fixed Voice Recording
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-        this.classList.remove("recording-active");
+        this.style.color = "#8696a0";
     } else {
         const stream = await navigator.mediaDevices.getUserMedia({audio:true});
         mediaRecorder = new MediaRecorder(stream);
@@ -91,10 +108,10 @@ document.getElementById("recordBtn").onclick = async function() {
             const reader = new FileReader();
             reader.onloadend = () => send(reader.result, "audio");
             reader.readAsDataURL(new Blob(audioChunks));
-            stream.getTracks().forEach(t => t.stop()); // Kill hardware stream
+            stream.getTracks().forEach(t => t.stop());
         };
         mediaRecorder.start();
-        this.classList.add("recording-active");
+        this.style.color = "red";
     }
 };
 
@@ -102,5 +119,3 @@ document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value) { send(i.value); i.value = ""; }
 };
-
-function openSettings() { document.getElementById('settings-overlay').style.display='flex'; }
