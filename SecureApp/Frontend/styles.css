@@ -1,39 +1,104 @@
-:root { --bg: #0b141a; --panel: #202c33; --accent: #00a884; --text: #e9edef; }
-
-body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; }
-
-/* Login Fix */
-#login-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #111b21; z-index: 100; }
-.login-box { background: var(--panel); padding: 30px; border-radius: 10px; text-align: center; }
-
-/* Layout Fix */
-#main-container { display: flex; height: 100vh; }
-#sidebar { width: 300px; background: #111b21; border-right: 1px solid #2a3942; }
-#chat-window { flex: 1; display: flex; flex-direction: column; }
-
-/* Header Fix */
-.chat-header { 
-    padding: 10px 20px; 
-    background: var(--panel); 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    height: 50px;
+:root {
+    --bg: #0b141a;
+    --panel: #111b21;
+    --accent: #00a884;
+    --text: #e9edef;
+    --glass: rgba(32, 44, 51, 0.8);
 }
 
-/* Input Area Fix */
-.input-area { padding: 10px; background: var(--panel); display: flex; gap: 10px; }
-#messageInput { 
-    flex: 1; 
-    padding: 10px; 
-    border-radius: 8px; 
-    border: none; 
-    background: #2a3942; 
-    color: white; 
+body { 
+    margin: 0; 
+    background: var(--bg); 
+    color: var(--text); 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Message Styling */
-.message { padding: 8px 12px; border-radius: 8px; margin: 5px; max-width: 70%; position: relative; }
-.my-message { align-self: flex-end; background: #005c4b; }
-.partner-message { align-self: flex-start; background: var(--panel); }
-.timestamp { font-size: 10px; opacity: 0.6; text-align: right; margin-top: 4px; }
+/* Login Screen Styling */
+#login-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #111b21 0%, #0b141a 100%);
+    z-index: 9999;
+}
+
+.bg-blur-circle {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: var(--accent);
+    filter: blur(120px);
+    opacity: 0.15;
+    z-index: -1;
+}
+
+.login-box {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    width: 350px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.lock-icon { font-size: 3rem; margin-bottom: 10px; }
+.login-box h2 { margin: 10px 0; font-weight: 500; }
+.login-box p { font-size: 0.9rem; color: #8696a0; margin-bottom: 25px; }
+
+.input-group { margin-bottom: 15px; }
+
+.login-box input {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #2a3942;
+    background: #2a3942;
+    color: white;
+    box-sizing: border-box;
+    font-size: 1rem;
+    outline: none;
+    transition: 0.3s;
+}
+
+.login-box input:focus { border-color: var(--accent); background: #32444d; }
+
+.primary-btn {
+    background: var(--accent);
+    color: #111b21;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-top: 10px;
+    transition: 0.3s;
+}
+
+.primary-btn:hover { background: #008f70; transform: translateY(-2px); }
+.login-footer { margin-top: 20px; font-size: 0.7rem; color: #667781; letter-spacing: 1px; }
+
+/* Fixed Chat Header & Call Button */
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.call-trigger {
+    background: var(--accent);
+    color: #111b21;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
