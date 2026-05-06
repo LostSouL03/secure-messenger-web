@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Messenger Pro</title>
-    <link rel="stylesheet" href="styles.css">
+    <!-- The ?v=2 forces the browser to drop the cached version! -->
+    <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
     <!-- Premium Login Screen -->
@@ -19,7 +20,6 @@
             <p>End-to-End Encrypted Node</p>
             <input type="text" id="usernameInput" placeholder="Username" autocomplete="off">
             <input type="password" id="keyInput" placeholder="Secret Auth Key">
-            <!-- The Big Button -->
             <button id="loginBtn" class="primary-btn">Enter Secure Relay</button>
         </div>
     </div>
@@ -41,7 +41,7 @@
                 </div>
             </div>
             
-            <!-- FIXED: The Search Bar Container -->
+            <!-- The Search Bar Container -->
             <div class="search-container">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
@@ -54,7 +54,6 @@
         
         <!-- Right Chat Window -->
         <div id="chat-window">
-            <!-- Default Empty State -->
             <div id="empty-state" class="empty-state">
                 <div class="empty-state-content">
                     <h3>Secure Messenger for Web</h3>
@@ -62,7 +61,6 @@
                 </div>
             </div>
 
-            <!-- Active Chat -->
             <div id="active-chat-area" style="display: none; height: 100%; flex-direction: column;">
                 <div class="chat-header">
                     <div class="chat-header-info">

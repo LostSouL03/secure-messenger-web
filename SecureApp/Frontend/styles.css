@@ -49,10 +49,45 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
 .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; box-sizing: border-box; outline: none; transition: 0.2s; }
 .login-box input:focus { border-color: var(--accent); background: rgba(0,0,0,0.4); }
 
-/* BIG PREMIUM BUTTON FIX */
-.primary-btn { background: var(--accent); color: #111b21; border: none; padding: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1.05rem; letter-spacing: 0.5px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0, 168, 132, 0.2); transition: all 0.3s ease; display: block; }
+/* --- BIG PREMIUM BUTTON FIX --- */
+.primary-btn { 
+    background: var(--accent); 
+    color: #111b21; 
+    border: none; 
+    padding: 16px; /* Taller button */
+    border-radius: 8px; 
+    cursor: pointer; 
+    width: 100%; /* Full width */
+    font-weight: bold; 
+    font-size: 1.05rem; 
+    letter-spacing: 0.5px; 
+    margin-top: 10px; 
+    box-shadow: 0 4px 15px rgba(0, 168, 132, 0.2); 
+    transition: all 0.3s ease; 
+    display: block; 
+}
 .primary-btn:hover { background: #008f70; box-shadow: 0 6px 20px rgba(0, 168, 132, 0.4); transform: translateY(-2px); }
-.primary-btn:active { transform: translateY(1px); }
+
+/* --- SEARCH BAR FIX --- */
+.search-container { padding: 8px 12px; background: var(--bg-main); border-bottom: 1px solid var(--border); }
+.search-box { 
+    background: var(--bg-panel); /* Background goes on the box, not the input */
+    border-radius: 8px; 
+    display: flex; 
+    align-items: center; 
+    padding: 0 12px; 
+    height: 35px; 
+}
+.search-icon { font-size: 0.9rem; color: var(--text-secondary); margin-right: 10px; }
+#contactSearch { 
+    flex: 1; 
+    border: none; 
+    background: transparent !important; /* Forces the input to be clear */
+    color: var(--text-primary); 
+    outline: none; 
+    font-size: 0.9rem; 
+    width: 100%; 
+}
 
 /* --- Main App Layout --- */
 #main-container { display: flex; width: 100%; height: 100%; }
