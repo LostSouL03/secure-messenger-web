@@ -48,8 +48,34 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
 .login-box p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 25px; }
 .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; box-sizing: border-box; outline: none; transition: 0.2s; }
 .login-box input:focus { border-color: var(--accent); background: rgba(0,0,0,0.4); }
-.primary-btn { background: var(--accent); color: #111b21; border: none; padding: 14px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: 0.2s; }
-.primary-btn:hover { background: #008f70; }
+
+/* Premium Login Button Upgrade */
+.primary-btn {
+    background: var(--accent);
+    color: #111b21; /* Dark text for high contrast */
+    border: none;
+    padding: 16px; /* Taller button */
+    border-radius: 8px; /* Matches the input fields */
+    cursor: pointer;
+    width: 100%; /* Makes it the same width as the text boxes */
+    font-weight: bold;
+    font-size: 1.05rem; /* Slightly larger text */
+    letter-spacing: 0.5px;
+    margin-top: 10px; /* Space between the password field and button */
+    box-shadow: 0 4px 15px rgba(0, 168, 132, 0.2); /* Subtle green glow */
+    transition: all 0.3s ease;
+    display: block;
+}
+
+.primary-btn:hover {
+    background: #008f70; /* Slightly darker green on hover */
+    box-shadow: 0 6px 20px rgba(0, 168, 132, 0.4); /* Stronger glow when hovered */
+    transform: translateY(-2px); /* Makes it look like it lifts off the page */
+}
+
+.primary-btn:active {
+    transform: translateY(1px); /* Pushes down when clicked */
+}
 
 /* Main App Layout */
 #main-container { display: flex; width: 100%; height: 100%; }
