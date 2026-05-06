@@ -215,6 +215,35 @@ document.getElementById("fileInput").onchange = (e) => {
     r.readAsDataURL(f);
 };
 
+// --- ADD CONTACT LOGIC ---
+function promptAddContact() {
+    // Only allow adding if you are logged in
+    if (!myUsername) {
+        alert("Please log in first.");
+        return;
+    }
+    
+    const newContact = prompt("Enter the exact username of the person you want to chat with:");
+    
+    if (newContact && newContact.trim() !== "") {
+        const cleanName = newContact.trim();
+        
+        if (cleanName === myUsername) {
+            alert("You cannot add yourself.");
+            return;
+        }
+        
+        // Add them to the list
+        addContact(cleanName);
+        
+        // Automatically open the chat with them
+        const newContactEl = document.getElementById(`contact-${cleanName}`);
+        if (newContactEl) {
+            newContactEl.click();
+        }
+    }
+}
+
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
