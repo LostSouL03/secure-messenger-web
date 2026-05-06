@@ -19,6 +19,7 @@
             <p>End-to-End Encrypted Node</p>
             <input type="text" id="usernameInput" placeholder="Username" autocomplete="off">
             <input type="password" id="keyInput" placeholder="Secret Auth Key">
+            <!-- The Big Button -->
             <button id="loginBtn" class="primary-btn">Enter Secure Relay</button>
         </div>
     </div>
@@ -33,13 +34,14 @@
                     <span class="chats-title">CHATS <small id="relay-badge">🔒</small></span>
                 </div>
                 <div class="header-right">
-                    <!-- NEW: Add Contact Button -->
+                    <!-- New Chat Button -->
                     <button id="add-contact-btn" onclick="promptAddContact()" title="New Chat">➕</button>
+                    <!-- Settings Button -->
                     <button id="gear-btn" onclick="openSettings()" title="Settings">⚙️</button>
                 </div>
             </div>
             
-            <!-- FIXED: Search Bar -->
+            <!-- FIXED: The Search Bar Container -->
             <div class="search-container">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
