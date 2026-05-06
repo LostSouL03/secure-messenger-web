@@ -12,7 +12,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- UI & SETTINGS ---
+// --- UI & SETTINGS HANDLERS ---
 document.getElementById('theme-toggle').onchange = (e) => {
     const isLight = e.target.checked;
     document.body.classList.toggle('light-mode', isLight);
@@ -23,7 +23,34 @@ function openSettings() { document.getElementById('settings-overlay').style.disp
 function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
 function logout() { location.reload(); }
 
-// Swap mic to send button dynamically
+// --- THE FIX: ADD CONTACT FUNCTION ---
+function promptAddContact() {
+    if (!myUsername) {
+        alert("Please log in first to add contacts.");
+        return;
+    }
+    
+    const newContact = prompt("Enter the exact username of the person you want to chat with:");
+    
+    if (newContact && newContact.trim() !== "") {
+        const cleanName = newContact.trim();
+        
+        if (cleanName === myUsername) {
+            alert("You cannot add yourself.");
+            return;
+        }
+        
+        addContact(cleanName);
+        
+        // Automatically open the chat with them
+        const newContactEl = document.getElementById(`contact-${cleanName}`);
+        if (newContactEl) {
+            newContactEl.click();
+        }
+    }
+}
+
+// Dynamic Input Buttons (Mic vs Send)
 document.getElementById('messageInput').addEventListener('input', function() {
     const micBtn = document.getElementById('recordBtn');
     const sendBtn = document.getElementById('sendBtn');
@@ -31,7 +58,6 @@ document.getElementById('messageInput').addEventListener('input', function() {
         micBtn.style.display = 'none';
         sendBtn.style.display = 'block';
         
-        // Typing indicator logic
         clearTimeout(typingTimeout);
         sendTypingStatus();
         typingTimeout = setTimeout(() => {}, 3000);
@@ -47,19 +73,19 @@ document.getElementById('loginBtn').onclick = () => {
     secretKey = document.getElementById("keyInput").value;
     if (!myUsername || !secretKey) return alert("Credentials Required");
 
-    // Connect
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
     
     ws.onopen = () => {
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("main-container").style.display = "flex";
-        // Initialize my avatar
+        
         document.querySelector('.my-avatar').innerText = myUsername.charAt(0).toUpperCase();
         document.querySelector('.my-avatar').style.display = 'flex';
         document.querySelector('.my-avatar').style.alignItems = 'center';
         document.querySelector('.my-avatar').style.justifyContent = 'center';
         document.querySelector('.my-avatar').style.color = 'white';
+        document.querySelector('.my-avatar').style.fontWeight = 'bold';
         
         contacts.forEach(u => displayContact(u));
     };
@@ -104,17 +130,14 @@ function displayContact(u) {
                 <span class="contact-name">${u}</span>
                 <span class="status-dot"></span>
             </div>
-            <div class="contact-row-bottom" id="subtitle-${u}">
-                <!-- Subtitle for last message or typing -->
-            </div>
+            <div class="contact-row-bottom" id="subtitle-${u}"></div>
         </div>
     `;
+    
     item.onclick = () => {
-        // Toggle view
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('active-chat-area').style.display = 'flex';
         
-        // Update headers
         document.getElementById('active-chat-user').innerText = u;
         document.getElementById('active-chat-avatar').innerText = initial;
         
@@ -142,7 +165,7 @@ function showTyping(user) {
 
 function hideTyping(user) {
     const subtitle = document.getElementById(`subtitle-${user}`);
-    if (subtitle) subtitle.innerHTML = ''; // Clear typing
+    if (subtitle) subtitle.innerHTML = '';
 }
 
 function updateStatus(user, isOnline) {
@@ -153,7 +176,8 @@ function updateStatus(user, isOnline) {
 document.getElementById('contactSearch').oninput = (e) => {
     const term = e.target.value.toLowerCase();
     document.querySelectorAll('.contact-item').forEach(it => {
-        it.style.display = it.querySelector('.contact-name').innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+        const name = it.querySelector('.contact-name').innerText.toLowerCase();
+        it.style.display = name.includes(term) ? 'flex' : 'none';
     });
 };
 
@@ -162,7 +186,6 @@ function renderMsg(user, content, cls, time, type, fname) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
     
-    // Only show sender name if it's a group or partner
     let inner = '';
     if (cls === 'partner-message') {
         inner += `<span class="msg-sender">${user}</span>`;
@@ -189,13 +212,12 @@ async function send(content, type="text", fname="") {
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
-// --- CONTROLS ---
+// --- SEND CONTROLS ---
 document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
     if(i.value.trim()) { 
         send(i.value.trim()); 
         i.value = ""; 
-        // Reset buttons
         document.getElementById('recordBtn').style.display = 'block';
         document.getElementById('sendBtn').style.display = 'none';
     }
@@ -205,7 +227,6 @@ document.getElementById("messageInput").onkeydown = (e) => {
     if(e.key === "Enter") document.getElementById("sendBtn").click(); 
 };
 
-// Media & Files
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
     const f = e.target.files[0];
@@ -214,35 +235,6 @@ document.getElementById("fileInput").onchange = (e) => {
     r.onloadend = () => send(r.result, "file", f.name);
     r.readAsDataURL(f);
 };
-
-// --- ADD CONTACT LOGIC ---
-function promptAddContact() {
-    // Only allow adding if you are logged in
-    if (!myUsername) {
-        alert("Please log in first.");
-        return;
-    }
-    
-    const newContact = prompt("Enter the exact username of the person you want to chat with:");
-    
-    if (newContact && newContact.trim() !== "") {
-        const cleanName = newContact.trim();
-        
-        if (cleanName === myUsername) {
-            alert("You cannot add yourself.");
-            return;
-        }
-        
-        // Add them to the list
-        addContact(cleanName);
-        
-        // Automatically open the chat with them
-        const newContactEl = document.getElementById(`contact-${cleanName}`);
-        if (newContactEl) {
-            newContactEl.click();
-        }
-    }
-}
 
 document.getElementById("recordBtn").onclick = async function() {
     if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -263,6 +255,6 @@ document.getElementById("recordBtn").onclick = async function() {
             };
             mediaRecorder.start();
             this.classList.add("recording-active");
-        } catch (err) { alert("Mic denied."); }
+        } catch (err) { alert("Microphone permission denied."); }
     }
 };
