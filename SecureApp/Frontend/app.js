@@ -1,8 +1,9 @@
 let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
+let typingTimeout;
 
-// --- THEME & SETUP ---
+// --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -11,28 +12,55 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- UI & SETTINGS ---
 document.getElementById('theme-toggle').onchange = (e) => {
     const isLight = e.target.checked;
     document.body.classList.toggle('light-mode', isLight);
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
 };
 
-function logout() { location.reload(); }
 function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
 function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
+function logout() { location.reload(); }
 
-// --- LOGIN ---
+// Swap mic to send button dynamically
+document.getElementById('messageInput').addEventListener('input', function() {
+    const micBtn = document.getElementById('recordBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    if (this.value.trim().length > 0) {
+        micBtn.style.display = 'none';
+        sendBtn.style.display = 'block';
+        
+        // Typing indicator logic
+        clearTimeout(typingTimeout);
+        sendTypingStatus();
+        typingTimeout = setTimeout(() => {}, 3000);
+    } else {
+        micBtn.style.display = 'block';
+        sendBtn.style.display = 'none';
+    }
+});
+
+// --- WEBSOCKET LOGIN ---
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
     if (!myUsername || !secretKey) return alert("Credentials Required");
 
+    // Connect
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
     
     ws.onopen = () => {
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("main-container").style.display = "flex";
+        // Initialize my avatar
+        document.querySelector('.my-avatar').innerText = myUsername.charAt(0).toUpperCase();
+        document.querySelector('.my-avatar').style.display = 'flex';
+        document.querySelector('.my-avatar').style.alignItems = 'center';
+        document.querySelector('.my-avatar').style.justifyContent = 'center';
+        document.querySelector('.my-avatar').style.color = 'white';
+        
         contacts.forEach(u => displayContact(u));
     };
 
@@ -40,14 +68,21 @@ document.getElementById('loginBtn').onclick = () => {
         const dec = await decrypt(e.data, secretKey);
         if (!dec) return;
         const data = JSON.parse(dec);
+        
         if (data.user !== myUsername) {
-            addContact(data.user);
-            updateStatus(data.user, true);
-            renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+            if (data.type === "typing") {
+                showTyping(data.user);
+            } else {
+                addContact(data.user);
+                updateStatus(data.user, true);
+                renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+                hideTyping(data.user);
+            }
         }
     };
 };
 
+// --- CONTACTS & SIDEBAR ---
 function addContact(u) {
     if (contacts.has(u)) return;
     contacts.add(u);
@@ -60,14 +95,54 @@ function displayContact(u) {
     const item = document.createElement('div');
     item.className = 'contact-item';
     item.id = `contact-${u}`;
-    item.innerHTML = `<span class="status-dot"></span><span>${u}</span>`;
+    const initial = u.charAt(0).toUpperCase();
+    
+    item.innerHTML = `
+        <div class="contact-avatar">${initial}</div>
+        <div class="contact-info">
+            <div class="contact-row-top">
+                <span class="contact-name">${u}</span>
+                <span class="status-dot"></span>
+            </div>
+            <div class="contact-row-bottom" id="subtitle-${u}">
+                <!-- Subtitle for last message or typing -->
+            </div>
+        </div>
+    `;
     item.onclick = () => {
+        // Toggle view
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('active-chat-area').style.display = 'flex';
+        
+        // Update headers
         document.getElementById('active-chat-user').innerText = u;
-        document.getElementById('callBtn').style.display = 'block';
+        document.getElementById('active-chat-avatar').innerText = initial;
+        
         document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
     };
     list.appendChild(item);
+}
+
+// --- TYPING & STATUS ---
+function sendTypingStatus() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        encrypt(JSON.stringify({ user: myUsername, type: "typing" }), secretKey).then(enc => ws.send(enc));
+    }
+}
+
+function showTyping(user) {
+    const subtitle = document.getElementById(`subtitle-${user}`);
+    if (subtitle) {
+        subtitle.innerHTML = '<span class="typing-indicator">typing...</span>';
+        clearTimeout(subtitle.typingTimer);
+        subtitle.typingTimer = setTimeout(() => hideTyping(user), 3000);
+    }
+}
+
+function hideTyping(user) {
+    const subtitle = document.getElementById(`subtitle-${user}`);
+    if (subtitle) subtitle.innerHTML = ''; // Clear typing
 }
 
 function updateStatus(user, isOnline) {
@@ -75,16 +150,33 @@ function updateStatus(user, isOnline) {
     if (el) el.querySelector('.status-dot').classList.toggle('status-online', isOnline);
 }
 
+document.getElementById('contactSearch').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.contact-item').forEach(it => {
+        it.style.display = it.querySelector('.contact-name').innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+    });
+};
+
 // --- MESSAGING ---
 function renderMsg(user, content, cls, time, type, fname) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
-    let inner = `<strong>${user}</strong><br>`;
-    if (type === "text") inner += content;
-    else if (type === "audio") inner += `<audio controls src="${content}"></audio>`;
-    else if (type === "file") inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 ${fname}</a>`;
     
-    div.innerHTML = `${inner}<div style="font-size:10px; opacity:0.5; text-align:right; margin-top:4px;">${time}</div>`;
+    // Only show sender name if it's a group or partner
+    let inner = '';
+    if (cls === 'partner-message') {
+        inner += `<span class="msg-sender">${user}</span>`;
+    }
+    
+    if (type === "text") {
+        inner += `<span>${content}</span>`;
+    } else if (type === "audio") {
+        inner += `<audio controls src="${content}"></audio>`;
+    } else if (type === "file") {
+        inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 ${fname}</a>`;
+    }
+    
+    div.innerHTML = `${inner}<div class="timestamp">${time}</div>`;
     const m = document.getElementById("messages");
     m.appendChild(div);
     m.scrollTop = m.scrollHeight;
@@ -98,16 +190,26 @@ async function send(content, type="text", fname="") {
 }
 
 // --- CONTROLS ---
-document.getElementById('contactSearch').oninput = (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.contact-item').forEach(it => {
-        it.style.display = it.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
-    });
+document.getElementById("sendBtn").onclick = () => {
+    const i = document.getElementById("messageInput");
+    if(i.value.trim()) { 
+        send(i.value.trim()); 
+        i.value = ""; 
+        // Reset buttons
+        document.getElementById('recordBtn').style.display = 'block';
+        document.getElementById('sendBtn').style.display = 'none';
+    }
 };
 
+document.getElementById("messageInput").onkeydown = (e) => { 
+    if(e.key === "Enter") document.getElementById("sendBtn").click(); 
+};
+
+// Media & Files
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
 document.getElementById("fileInput").onchange = (e) => {
     const f = e.target.files[0];
+    if(!f) return;
     const r = new FileReader();
     r.onloadend = () => send(r.result, "file", f.name);
     r.readAsDataURL(f);
@@ -118,24 +220,20 @@ document.getElementById("recordBtn").onclick = async function() {
         mediaRecorder.stop();
         this.classList.remove("recording-active");
     } else {
-        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(s);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const b = new Blob(audioChunks, { type: 'audio/webm' });
-            const r = new FileReader();
-            r.onloadend = () => send(r.result, "audio");
-            r.readAsDataURL(b);
-            s.getTracks().forEach(t => t.stop());
-        };
-        mediaRecorder.start();
-        this.classList.add("recording-active");
+        try {
+            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(s);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const b = new Blob(audioChunks, { type: 'audio/webm' });
+                const r = new FileReader();
+                r.onloadend = () => send(r.result, "audio");
+                r.readAsDataURL(b);
+                s.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorder.start();
+            this.classList.add("recording-active");
+        } catch (err) { alert("Mic denied."); }
     }
 };
-
-document.getElementById("sendBtn").onclick = () => {
-    const i = document.getElementById("messageInput");
-    if(i.value.trim()) { send(i.value.trim()); i.value = ""; }
-};
-document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
