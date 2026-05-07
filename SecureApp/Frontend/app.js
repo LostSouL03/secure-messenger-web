@@ -4,26 +4,30 @@ let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]')
 let chatHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
 let activeChatUser = null; 
 let typingTimeout;
+let pendingContact = null;
+let pendingAddTimeout = null;
 
 let pc, mediaStream;
 const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
-// --- THEME & SETTINGS ---
+// --- INITIALIZATION ---
 window.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.add('light-mode');
         document.getElementById('theme-toggle').checked = true;
     }
 });
+
 document.getElementById('theme-toggle').onchange = e => {
     document.body.classList.toggle('light-mode', e.target.checked);
     localStorage.setItem('theme', e.target.checked ? 'light' : 'dark');
 };
+
 function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; }
 function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; }
 function logout() { location.reload(); }
 
-// --- WEBSOCKET LOGIN & ROUTER ---
+// --- WEBSOCKET LOGIN & AUTH ---
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
@@ -31,6 +35,7 @@ document.getElementById('loginBtn').onclick = () => {
     
     if (errorBox) { errorBox.style.display = "none"; errorBox.innerText = ""; }
 
+    // Request Notification Permissions
     if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
         Notification.requestPermission();
     }
@@ -64,7 +69,7 @@ document.getElementById('loginBtn').onclick = () => {
         if (!dec) return;
         const data = JSON.parse(dec);
         
-        // 1. Handshake logic
+        // 1. Handshake Logic
         if (data.type === 'ping' && data.target === myUsername) {
             encrypt(JSON.stringify({ user: myUsername, type: 'pong', target: data.user }), secretKey).then(enc => ws.send(enc));
             return;
@@ -76,73 +81,78 @@ document.getElementById('loginBtn').onclick = () => {
             return;
         }
 
-        // 2. WebRTC Call Signals
+        // 2. WebRTC Logic
         if (data.isSignal && data.target === myUsername) {
             handleSignal(data);
             return;
         }
 
-        // 3. READ RECEIPTS (Incoming)
+        // 3. Read Receipts
         if (data.type === 'read' && data.target === myUsername) {
-            // Update local history
             if (chatHistory[data.user]) {
                 const msg = chatHistory[data.user].find(m => m.id === data.id);
                 if (msg) msg.status = 'read';
                 localStorage.setItem('chat_history', JSON.stringify(chatHistory));
             }
-            // Update UI instantly if we are looking at the chat
             if (activeChatUser === data.user) {
                 const statusEl = document.getElementById(`status-${data.id}`);
                 if (statusEl) {
                     statusEl.className = 'msg-status tick-read';
-                    statusEl.innerText = '✓✓'; // Change to double tick
+                    statusEl.innerText = '✓✓';
                 }
             }
             return;
         }
 
-        // 4. Chat Messages & Typing
+        // 4. Messages & Typing
         if (data.user !== myUsername && (!data.target || data.target === myUsername || data.target === "all")) {
             if (data.type === "typing") {
                 showTyping(data.user);
             } else {
                 addContact(data.user);
                 updateStatus(data.user, true);
-                
-                // Save incoming message
                 saveMessage(data.user, { id: data.id, sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
                 
                 if (activeChatUser === data.user && !document.hidden) {
-                    // You are looking right at the chat, render it and send read receipt
                     renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname, data.id, null);
                     sendReadReceipt(data.user, data.id);
                 } else {
-                    // --- NEW: Trigger Notification & Unread Badge ---
                     notifyUser(data.user, data.type, data.content);
-                    
                     const subtitle = document.getElementById(`subtitle-${data.user}`);
                     if (subtitle && !subtitle.querySelector('.typing-indicator')) {
                         subtitle.innerHTML = `<span style="color: var(--accent); font-weight: bold;">New message</span>`;
                     }
                 }
-                
                 hideTyping(data.user);
             }
         }
     };
 };
 
-// --- READ RECEIPT SENDER ---
-function sendReadReceipt(targetUser, messageId) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        encrypt(JSON.stringify({ user: myUsername, type: "read", target: targetUser, id: messageId }), secretKey).then(enc => ws.send(enc));
+// --- BROWSER NOTIFICATIONS ---
+function notifyUser(sender, messageType, content) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        if (document.hidden || activeChatUser !== sender) {
+            let previewText = content;
+            if (messageType === "audio") previewText = "🎤 Sent a voice message";
+            if (messageType === "file" && content.startsWith("data:image/")) previewText = "📷 Sent an image";
+            else if (messageType === "file") previewText = "📎 Sent a file";
+
+            const notification = new Notification(`New message from ${sender}`, {
+                body: previewText,
+                icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💬</text></svg>'
+            });
+            notification.onclick = function() {
+                window.focus();
+                const contactEl = document.getElementById(`contact-${sender}`);
+                if (contactEl) contactEl.click();
+                this.close();
+            };
+        }
     }
 }
 
 // --- ADD CONTACT ---
-let pendingContact = null;
-let pendingAddTimeout = null;
-
 function promptAddContact() {
     if (!myUsername) return alert("Please log in first.");
     const newContact = prompt("Enter the exact username to connect with:");
@@ -170,7 +180,15 @@ function addContact(u) {
     displayContact(u);
 }
 
-// --- SWITCHING CHATS ---
+document.getElementById('contactSearch').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.contact-item').forEach(it => {
+        const name = it.querySelector('.contact-name').innerText.toLowerCase();
+        it.style.display = name.includes(term) ? 'flex' : 'none';
+    });
+};
+
+// --- SWITCH CHATS ---
 function displayContact(u) {
     const list = document.getElementById('contact-list');
     const item = document.createElement('div');
@@ -191,6 +209,10 @@ function displayContact(u) {
     
     item.onclick = () => {
         activeChatUser = u;
+        
+        const subtitle = document.getElementById(`subtitle-${u}`);
+        if (subtitle && subtitle.innerText === 'New message') subtitle.innerHTML = '';
+        
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('active-chat-area').style.display = 'flex';
         document.getElementById('active-chat-user').innerText = u;
@@ -198,6 +220,8 @@ function displayContact(u) {
         
         const isOnline = item.querySelector('.status-dot').classList.contains('status-online');
         document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
+        document.getElementById('active-chat-status').style.color = '';
+        document.getElementById('active-chat-status').style.fontStyle = 'normal';
         
         document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
@@ -210,7 +234,6 @@ function displayContact(u) {
             const cls = msg.sender === "You" ? "my-message" : "partner-message";
             renderMsg(msg.sender, msg.content, cls, msg.time, msg.type, msg.fname, msg.id, msg.status);
             
-            // If we are loading an unread message from our partner, send them a read receipt now
             if (msg.sender !== "You" && !msg.readReceiptSent) {
                 sendReadReceipt(activeChatUser, msg.id);
                 msg.readReceiptSent = true; 
@@ -221,19 +244,37 @@ function displayContact(u) {
     list.appendChild(item);
 }
 
-// --- MESSAGE HISTORY SAVER ---
+// --- DATA SAVING ---
 function saveMessage(contact, msgObj) {
     if (!chatHistory[contact]) chatHistory[contact] = [];
     chatHistory[contact].push(msgObj);
     localStorage.setItem('chat_history', JSON.stringify(chatHistory));
 }
 
+// --- DELETE CHAT ---
+document.getElementById('deleteChatBtn').onclick = () => {
+    if (!activeChatUser) return;
+    if (confirm(`Are you sure you want to delete your chat with ${activeChatUser}?`)) {
+        contacts.delete(activeChatUser);
+        localStorage.setItem('chat_contacts', JSON.stringify([...contacts]));
+        delete chatHistory[activeChatUser];
+        localStorage.setItem('chat_history', JSON.stringify(chatHistory));
+        const contactEl = document.getElementById(`contact-${activeChatUser}`);
+        if (contactEl) contactEl.remove();
+        activeChatUser = null;
+        document.getElementById('active-chat-area').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'flex';
+    }
+};
+
 // --- STATUS & TYPING ---
 function updateStatus(user, isOnline) {
     const el = document.getElementById(`contact-${user}`);
     if (el) {
         el.querySelector('.status-dot').classList.toggle('status-online', isOnline);
-        if (activeChatUser === user) document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
+        if (activeChatUser === user && document.getElementById('active-chat-status').innerText !== 'typing...') {
+            document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
+        }
     }
 }
 
@@ -246,31 +287,39 @@ function sendTypingStatus() {
 function showTyping(user) {
     const subtitle = document.getElementById(`subtitle-${user}`);
     if (subtitle) {
-        subtitle.innerHTML = '<span class="typing-indicator">typing...</span>';
+        subtitle.innerHTML = '<span class="typing-indicator" style="color: var(--accent); font-style: italic;">typing...</span>';
         clearTimeout(subtitle.typingTimer);
         subtitle.typingTimer = setTimeout(() => hideTyping(user), 3000);
+    }
+    if (activeChatUser === user) {
+        const chatStatus = document.getElementById('active-chat-status');
+        chatStatus.innerText = 'typing...';
+        chatStatus.style.color = 'var(--accent)';
+        chatStatus.style.fontStyle = 'italic';
     }
 }
 
 function hideTyping(user) {
     const subtitle = document.getElementById(`subtitle-${user}`);
-    if (subtitle) subtitle.innerHTML = '';
+    if (subtitle) subtitle.innerHTML = ''; 
+    
+    if (activeChatUser === user) {
+        const chatStatus = document.getElementById('active-chat-status');
+        const contactEl = document.getElementById(`contact-${user}`);
+        const isOnline = contactEl && contactEl.querySelector('.status-dot').classList.contains('status-online');
+        chatStatus.innerText = isOnline ? 'Online' : '';
+        chatStatus.style.color = '';
+        chatStatus.style.fontStyle = 'normal';
+    }
 }
 
-document.getElementById('messageInput').addEventListener('input', function() {
-    const mic = document.getElementById('recordBtn');
-    const snd = document.getElementById('sendBtn');
-    if (this.value.trim().length > 0) {
-        mic.style.display = 'none'; snd.style.display = 'block';
-        clearTimeout(typingTimeout);
-        sendTypingStatus();
-        typingTimeout = setTimeout(() => {}, 3000);
-    } else {
-        mic.style.display = 'block'; snd.style.display = 'none';
+// --- RENDER & SEND ---
+function sendReadReceipt(targetUser, messageId) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        encrypt(JSON.stringify({ user: myUsername, type: "read", target: targetUser, id: messageId }), secretKey).then(enc => ws.send(enc));
     }
-});
+}
 
-// --- RENDER & SEND MESSAGES ---
 function renderMsg(user, content, cls, time, type, fname, msgId, status) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
@@ -287,7 +336,6 @@ function renderMsg(user, content, cls, time, type, fname, msgId, status) {
         inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 Download ${fname}</a>`;
     }
     
-    // Generate the Tick HTML if it's your message
     let statusHtml = '';
     if (cls === 'my-message') {
         const tickClass = status === 'read' ? 'tick-read' : 'tick-sent';
@@ -305,7 +353,7 @@ async function send(content, type="text", fname="") {
     if (!activeChatUser) return alert("Please select a chat first!");
     
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    const msgId = "msg_" + Date.now().toString() + Math.random().toString(36).substr(2, 5); // Generate unique ID
+    const msgId = "msg_" + Date.now().toString() + Math.random().toString(36).substr(2, 5);
     
     const payload = JSON.stringify({user:myUsername, content, type, time, fname, target: activeChatUser, id: msgId});
     const enc = await encrypt(payload, secretKey);
@@ -315,7 +363,64 @@ async function send(content, type="text", fname="") {
     renderMsg("You", content, "my-message", time, type, fname, msgId, 'sent');
 }
 
-// --- CALL BUTTON (WEBRTC) ---
+// --- INPUT HANDLERS ---
+document.getElementById('messageInput').addEventListener('input', function() {
+    const mic = document.getElementById('recordBtn');
+    const snd = document.getElementById('sendBtn');
+    if (this.value.trim().length > 0) {
+        mic.style.display = 'none'; snd.style.display = 'block';
+        clearTimeout(typingTimeout);
+        sendTypingStatus();
+        typingTimeout = setTimeout(() => {}, 3000);
+    } else {
+        mic.style.display = 'block'; snd.style.display = 'none';
+    }
+});
+
+document.getElementById("sendBtn").onclick = () => {
+    const i = document.getElementById("messageInput");
+    if(i.value.trim()) { 
+        send(i.value.trim()); 
+        i.value = ""; 
+        document.getElementById('recordBtn').style.display = 'block'; 
+        document.getElementById('sendBtn').style.display = 'none';
+    }
+};
+document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
+document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onloadend = () => send(r.result, "file", f.name);
+    r.readAsDataURL(f);
+};
+
+// --- MEDIA RECORDING ---
+document.getElementById("recordBtn").onclick = async function() {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        this.classList.remove("recording-active");
+    } else {
+        try {
+            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(s);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const b = new Blob(audioChunks, { type: 'audio/webm' });
+                const r = new FileReader();
+                r.onloadend = () => send(r.result, "audio");
+                r.readAsDataURL(b);
+                s.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorder.start();
+            this.classList.add("recording-active");
+        } catch (err) { alert("Mic denied."); }
+    }
+};
+
+// --- WEBRTC VIDEO CALL ---
 document.getElementById('callBtn').onclick = async () => {
     if (!activeChatUser) return alert("Select a contact to call.");
     document.getElementById("video-container").style.display = "flex";
@@ -366,102 +471,4 @@ function endCall(notify=true) {
     if (pc) pc.close();
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     document.getElementById("video-container").style.display = "none";
-}
-
-// --- STANDARD CONTROLS ---
-document.getElementById("sendBtn").onclick = () => {
-    const i = document.getElementById("messageInput");
-    if(i.value.trim()) { 
-        send(i.value.trim()); 
-        i.value = ""; 
-        document.getElementById('recordBtn').style.display = 'block'; 
-        document.getElementById('sendBtn').style.display = 'none';
-    }
-};
-document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
-document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
-document.getElementById("fileInput").onchange = (e) => {
-    const f = e.target.files[0];
-    if(!f) return;
-    const r = new FileReader();
-    r.onloadend = () => send(r.result, "file", f.name);
-    r.readAsDataURL(f);
-};
-
-document.getElementById("recordBtn").onclick = async function() {
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-        this.classList.remove("recording-active");
-    } else {
-        try {
-            const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(s);
-            audioChunks = [];
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const b = new Blob(audioChunks, { type: 'audio/webm' });
-                const r = new FileReader();
-                r.onloadend = () => send(r.result, "audio");
-                r.readAsDataURL(b);
-                s.getTracks().forEach(t => t.stop());
-            };
-            mediaRecorder.start();
-            this.classList.add("recording-active");
-        } catch (err) { alert("Mic denied."); }
-    }
-};
-
-// --- DELETE CHAT LOGIC ---
-document.getElementById('deleteChatBtn').onclick = () => {
-    if (!activeChatUser) return;
-    
-    // Ask for confirmation before wiping data
-    if (confirm(`Are you sure you want to delete your chat with ${activeChatUser}? This will erase all message history and remove them from your contacts.`)) {
-        
-        // 1. Remove from contacts list & save
-        contacts.delete(activeChatUser);
-        localStorage.setItem('chat_contacts', JSON.stringify([...contacts]));
-        
-        // 2. Remove from local chat history & save
-        delete chatHistory[activeChatUser];
-        localStorage.setItem('chat_history', JSON.stringify(chatHistory));
-        
-        // 3. Remove their name from the sidebar UI
-        const contactEl = document.getElementById(`contact-${activeChatUser}`);
-        if (contactEl) contactEl.remove();
-        
-        // 4. Clear the active chat view and return to the empty state
-        activeChatUser = null;
-        document.getElementById('active-chat-area').style.display = 'none';
-        document.getElementById('empty-state').style.display = 'flex';
-    }
-};
-
-// --- BROWSER NOTIFICATIONS ---
-function notifyUser(sender, messageType, content) {
-    if ("Notification" in window && Notification.permission === "granted") {
-        // Only notify if the tab is hidden OR you are looking at a different chat
-        if (document.hidden || activeChatUser !== sender) {
-            
-            // Format the text based on what was sent
-            let previewText = content;
-            if (messageType === "audio") previewText = "🎤 Sent a voice message";
-            if (messageType === "file" && content.startsWith("data:image/")) previewText = "📷 Sent an image";
-            else if (messageType === "file") previewText = "📎 Sent a file";
-
-            const notification = new Notification(`New message from ${sender}`, {
-                body: previewText,
-                // Uses a simple speech bubble emoji as the icon
-                icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💬</text></svg>'
-            });
-
-            // When you click the desktop notification, focus the window and open the chat
-            notification.onclick = function() {
-                window.focus();
-                const contactEl = document.getElementById(`contact-${sender}`);
-                if (contactEl) contactEl.click();
-                this.close();
-            };
-        }
-    }
 }
