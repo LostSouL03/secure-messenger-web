@@ -49,6 +49,20 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
 .login-box input { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); color: white; box-sizing: border-box; outline: none; transition: 0.2s; }
 .login-box input:focus { border-color: var(--accent); background: rgba(0,0,0,0.4); }
 
+/* --- LOGIN ERROR MSG --- */
+.error-box {
+    display: none;
+    color: #f15c6d;
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+    background: rgba(241, 92, 109, 0.1);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(241, 92, 109, 0.3);
+    text-align: center;
+    font-weight: 500;
+}
+
 /* --- BIG PREMIUM BUTTON FIX --- */
 .primary-btn { 
     background: var(--accent); 

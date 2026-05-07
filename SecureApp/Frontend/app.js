@@ -27,18 +27,55 @@ function closeSettings() { document.getElementById('settings-overlay').style.dis
 function logout() { location.reload(); }
 
 // --- WEBSOCKET LOGIN & ROUTER ---
+// --- WEBSOCKET LOGIN & ROUTER ---
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
-    if (!myUsername || !secretKey) return alert("Credentials Required");
+    const errorBox = document.getElementById("login-error");
+    
+    // Reset error box
+    errorBox.style.display = "none";
+    errorBox.innerText = "";
 
+    if (!myUsername || !secretKey) {
+        errorBox.innerText = "Username and Secret Key are required.";
+        errorBox.style.display = "block";
+        return;
+    }
+
+    // --- NEW: Account Validation Logic ---
+    // Fetch registered accounts from browser memory
+    let accounts = JSON.parse(localStorage.getItem('secure_accounts') || '{}');
+
+    if (accounts[myUsername]) {
+        // Account exists, check if the password matches
+        if (accounts[myUsername] !== secretKey) {
+            errorBox.innerText = "Access Denied: Invalid Secret Key for this username.";
+            errorBox.style.display = "block";
+            return;
+        }
+    } else {
+        // New user: Register them in memory
+        accounts[myUsername] = secretKey;
+        localStorage.setItem('secure_accounts', JSON.stringify(accounts));
+    }
+    // -------------------------------------
+
+    // Connect to WebSocket if credentials are valid
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
     
     ws.onopen = () => {
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("main-container").style.display = "flex";
+        
         document.querySelector('.my-avatar').innerText = myUsername.charAt(0).toUpperCase();
+        document.querySelector('.my-avatar').style.display = 'flex';
+        document.querySelector('.my-avatar').style.alignItems = 'center';
+        document.querySelector('.my-avatar').style.justifyContent = 'center';
+        document.querySelector('.my-avatar').style.color = 'white';
+        document.querySelector('.my-avatar').style.fontWeight = 'bold';
+        
         contacts.forEach(u => displayContact(u));
     };
 
@@ -73,10 +110,8 @@ document.getElementById('loginBtn').onclick = () => {
                 addContact(data.user);
                 updateStatus(data.user, true);
                 
-                // SAVE MESSAGE TO HISTORY
                 saveMessage(data.user, { sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
                 
-                // ONLY render if we are currently looking at their chat
                 if (activeChatUser === data.user) {
                     renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
                 }
@@ -359,3 +394,4 @@ document.getElementById("recordBtn").onclick = async function() {
         } catch (err) { alert("Mic denied."); }
     }
 };
+
