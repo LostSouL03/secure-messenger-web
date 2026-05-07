@@ -176,3 +176,46 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* --- Utils --- */
 audio { height: 40px; width: 250px; outline: none; border-radius: 20px; }
 @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+/* --- ATTACHED IMAGE FIX --- */
+.chat-image {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* --- VIDEO CALL UI --- */
+#video-container {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 20, 26, 0.95);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+#remoteVideo {
+    width: 80%;
+    max-height: 70vh;
+    background: #000;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+#localVideo {
+    width: 150px;
+    position: absolute;
+    bottom: 100px;
+    right: 30px;
+    border-radius: 8px;
+    border: 2px solid var(--accent);
+    background: #000;
+}
+.call-controls {
+    position: absolute;
+    bottom: 30px;
+    display: flex;
+    gap: 20px;
+}

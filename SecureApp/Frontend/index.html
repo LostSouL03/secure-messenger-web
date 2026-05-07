@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Messenger Pro</title>
-    <!-- The ?v=2 forces the browser to drop the cached version! -->
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
-    <!-- Premium Login Screen -->
+    <div id="video-container" style="display:none;">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <video id="localVideo" autoplay playsinline muted></video>
+        <div class="call-controls">
+            <button id="hangupBtn" class="danger-btn">End Call</button>
+        </div>
+    </div>
+
     <div id="login-screen">
         <div class="bg-shape shape-1"></div>
         <div class="bg-shape shape-2"></div>
@@ -24,9 +30,7 @@
         </div>
     </div>
 
-    <!-- Main WhatsApp-Style App -->
     <div id="main-container" style="display: none;">
-        <!-- Left Sidebar -->
         <div id="sidebar">
             <div class="sidebar-header">
                 <div class="header-left">
@@ -34,14 +38,11 @@
                     <span class="chats-title">CHATS <small id="relay-badge">🔒</small></span>
                 </div>
                 <div class="header-right">
-                    <!-- New Chat Button -->
                     <button id="add-contact-btn" onclick="promptAddContact()" title="New Chat">➕</button>
-                    <!-- Settings Button -->
                     <button id="gear-btn" onclick="openSettings()" title="Settings">⚙️</button>
                 </div>
             </div>
             
-            <!-- The Search Bar Container -->
             <div class="search-container">
                 <div class="search-box">
                     <span class="search-icon">🔍</span>
@@ -52,7 +53,6 @@
             <div id="contact-list"></div>
         </div>
         
-        <!-- Right Chat Window -->
         <div id="chat-window">
             <div id="empty-state" class="empty-state">
                 <div class="empty-state-content">
@@ -67,7 +67,7 @@
                         <div class="chat-avatar" id="active-chat-avatar"></div>
                         <div class="chat-header-text">
                             <span id="active-chat-user"></span>
-                            <small id="active-chat-status">Online</small>
+                            <small id="active-chat-status"></small>
                         </div>
                     </div>
                     <button id="callBtn" class="call-trigger">📞</button>
@@ -88,7 +88,6 @@
         </div>
     </div>
 
-    <!-- Settings Overlay -->
     <div id="settings-overlay" class="overlay">
         <div class="settings-box">
             <h3>System Settings</h3>
@@ -104,9 +103,7 @@
         </div>
     </div>
 
-<!-- At the very bottom of index.html -->
     <script src="encryption.js"></script>
-    <!-- Add ?v=2 here to force the browser to load the new logic -->
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
