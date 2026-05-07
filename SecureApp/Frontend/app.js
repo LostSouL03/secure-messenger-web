@@ -1,13 +1,10 @@
 let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
-
-// NEW: Message History and Active Chat tracking
 let chatHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
 let activeChatUser = null; 
 let typingTimeout;
 
-// WebRTC Variables
 let pc, mediaStream;
 const config = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
@@ -27,55 +24,34 @@ function closeSettings() { document.getElementById('settings-overlay').style.dis
 function logout() { location.reload(); }
 
 // --- WEBSOCKET LOGIN & ROUTER ---
-// --- WEBSOCKET LOGIN & ROUTER ---
 document.getElementById('loginBtn').onclick = () => {
     myUsername = document.getElementById("usernameInput").value.trim();
     secretKey = document.getElementById("keyInput").value;
     const errorBox = document.getElementById("login-error");
     
-    // Reset error box
-    errorBox.style.display = "none";
-    errorBox.innerText = "";
+    if (errorBox) { errorBox.style.display = "none"; errorBox.innerText = ""; }
 
     if (!myUsername || !secretKey) {
-        errorBox.innerText = "Username and Secret Key are required.";
-        errorBox.style.display = "block";
+        if (errorBox) { errorBox.innerText = "Credentials required."; errorBox.style.display = "block"; }
         return;
     }
 
-    // --- NEW: Account Validation Logic ---
-    // Fetch registered accounts from browser memory
     let accounts = JSON.parse(localStorage.getItem('secure_accounts') || '{}');
-
-    if (accounts[myUsername]) {
-        // Account exists, check if the password matches
-        if (accounts[myUsername] !== secretKey) {
-            errorBox.innerText = "Access Denied: Invalid Secret Key for this username.";
-            errorBox.style.display = "block";
-            return;
-        }
+    if (accounts[myUsername] && accounts[myUsername] !== secretKey) {
+        if (errorBox) { errorBox.innerText = "Invalid Secret Key for this username."; errorBox.style.display = "block"; }
+        return;
     } else {
-        // New user: Register them in memory
         accounts[myUsername] = secretKey;
         localStorage.setItem('secure_accounts', JSON.stringify(accounts));
     }
-    // -------------------------------------
 
-    // Connect to WebSocket if credentials are valid
     const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
     ws = new WebSocket(`${protocol}${window.location.host}/ws`);
     
     ws.onopen = () => {
         document.getElementById("login-screen").style.display = "none";
         document.getElementById("main-container").style.display = "flex";
-        
         document.querySelector('.my-avatar').innerText = myUsername.charAt(0).toUpperCase();
-        document.querySelector('.my-avatar').style.display = 'flex';
-        document.querySelector('.my-avatar').style.alignItems = 'center';
-        document.querySelector('.my-avatar').style.justifyContent = 'center';
-        document.querySelector('.my-avatar').style.color = 'white';
-        document.querySelector('.my-avatar').style.fontWeight = 'bold';
-        
         contacts.forEach(u => displayContact(u));
     };
 
@@ -84,7 +60,7 @@ document.getElementById('loginBtn').onclick = () => {
         if (!dec) return;
         const data = JSON.parse(dec);
         
-        // 1. Handshake logic (Adding Contacts)
+        // 1. Handshake logic
         if (data.type === 'ping' && data.target === myUsername) {
             encrypt(JSON.stringify({ user: myUsername, type: 'pong', target: data.user }), secretKey).then(enc => ws.send(enc));
             return;
@@ -102,7 +78,26 @@ document.getElementById('loginBtn').onclick = () => {
             return;
         }
 
-        // 3. Chat Messages & Typing
+        // 3. READ RECEIPTS (Incoming)
+        if (data.type === 'read' && data.target === myUsername) {
+            // Update local history
+            if (chatHistory[data.user]) {
+                const msg = chatHistory[data.user].find(m => m.id === data.id);
+                if (msg) msg.status = 'read';
+                localStorage.setItem('chat_history', JSON.stringify(chatHistory));
+            }
+            // Update UI instantly if we are looking at the chat
+            if (activeChatUser === data.user) {
+                const statusEl = document.getElementById(`status-${data.id}`);
+                if (statusEl) {
+                    statusEl.className = 'msg-status tick-read';
+                    statusEl.innerText = '✓✓'; // Change to double tick
+                }
+            }
+            return;
+        }
+
+        // 4. Chat Messages & Typing
         if (data.user !== myUsername && (!data.target || data.target === myUsername || data.target === "all")) {
             if (data.type === "typing") {
                 showTyping(data.user);
@@ -110,10 +105,13 @@ document.getElementById('loginBtn').onclick = () => {
                 addContact(data.user);
                 updateStatus(data.user, true);
                 
-                saveMessage(data.user, { sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
+                // Save incoming message
+                saveMessage(data.user, { id: data.id, sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
                 
                 if (activeChatUser === data.user) {
-                    renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+                    renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname, data.id, null);
+                    // Since we are looking at the chat, instantly send a read receipt back!
+                    sendReadReceipt(data.user, data.id);
                 }
                 hideTyping(data.user);
             }
@@ -121,7 +119,14 @@ document.getElementById('loginBtn').onclick = () => {
     };
 };
 
-// --- ADD CONTACT (PING/PONG PROTOCOL) ---
+// --- READ RECEIPT SENDER ---
+function sendReadReceipt(targetUser, messageId) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        encrypt(JSON.stringify({ user: myUsername, type: "read", target: targetUser, id: messageId }), secretKey).then(enc => ws.send(enc));
+    }
+}
+
+// --- ADD CONTACT ---
 let pendingContact = null;
 let pendingAddTimeout = null;
 
@@ -134,7 +139,7 @@ function promptAddContact() {
     encrypt(JSON.stringify({ user: myUsername, type: 'ping', target: pendingContact }), secretKey).then(enc => ws.send(enc));
     
     pendingAddTimeout = setTimeout(() => {
-        alert(`User '${pendingContact}' is not online or does not exist.`);
+        alert(`User '${pendingContact}' is not online.`);
         pendingContact = null;
     }, 3000);
 }
@@ -152,7 +157,7 @@ function addContact(u) {
     displayContact(u);
 }
 
-// --- SWITCHING CHATS & DISPLAYING CONTACTS ---
+// --- SWITCHING CHATS ---
 function displayContact(u) {
     const list = document.getElementById('contact-list');
     const item = document.createElement('div');
@@ -172,10 +177,7 @@ function displayContact(u) {
     `;
     
     item.onclick = () => {
-        // 1. Set the active user
         activeChatUser = u;
-        
-        // 2. Update the UI layout
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('active-chat-area').style.display = 'flex';
         document.getElementById('active-chat-user').innerText = u;
@@ -187,15 +189,21 @@ function displayContact(u) {
         document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
         
-        // 3. LOAD MESSAGE HISTORY FOR THIS USER
         const msgContainer = document.getElementById("messages");
-        msgContainer.innerHTML = ""; // Clear current screen
+        msgContainer.innerHTML = ""; 
         
         const history = chatHistory[activeChatUser] || [];
         history.forEach(msg => {
             const cls = msg.sender === "You" ? "my-message" : "partner-message";
-            renderMsg(msg.sender, msg.content, cls, msg.time, msg.type, msg.fname);
+            renderMsg(msg.sender, msg.content, cls, msg.time, msg.type, msg.fname, msg.id, msg.status);
+            
+            // If we are loading an unread message from our partner, send them a read receipt now
+            if (msg.sender !== "You" && !msg.readReceiptSent) {
+                sendReadReceipt(activeChatUser, msg.id);
+                msg.readReceiptSent = true; 
+            }
         });
+        localStorage.setItem('chat_history', JSON.stringify(chatHistory));
     };
     list.appendChild(item);
 }
@@ -212,9 +220,7 @@ function updateStatus(user, isOnline) {
     const el = document.getElementById(`contact-${user}`);
     if (el) {
         el.querySelector('.status-dot').classList.toggle('status-online', isOnline);
-        if (activeChatUser === user) {
-            document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
-        }
+        if (activeChatUser === user) document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
     }
 }
 
@@ -252,7 +258,7 @@ document.getElementById('messageInput').addEventListener('input', function() {
 });
 
 // --- RENDER & SEND MESSAGES ---
-function renderMsg(user, content, cls, time, type, fname) {
+function renderMsg(user, content, cls, time, type, fname, msgId, status) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
     let inner = cls === 'partner-message' ? `<span class="msg-sender">${user}</span>` : '';
@@ -268,7 +274,15 @@ function renderMsg(user, content, cls, time, type, fname) {
         inner += `<a href="${content}" download="${fname}" style="color:var(--accent); font-weight:bold; text-decoration:none;">📄 Download ${fname}</a>`;
     }
     
-    div.innerHTML = `${inner}<div class="timestamp">${time}</div>`;
+    // Generate the Tick HTML if it's your message
+    let statusHtml = '';
+    if (cls === 'my-message') {
+        const tickClass = status === 'read' ? 'tick-read' : 'tick-sent';
+        const tickText = status === 'read' ? '✓✓' : '✓';
+        statusHtml = `<span class="msg-status ${tickClass}" id="status-${msgId}">${tickText}</span>`;
+    }
+    
+    div.innerHTML = `${inner}<div class="msg-footer"><span class="timestamp">${time}</span>${statusHtml}</div>`;
     const m = document.getElementById("messages");
     m.appendChild(div);
     m.scrollTop = m.scrollHeight;
@@ -278,32 +292,27 @@ async function send(content, type="text", fname="") {
     if (!activeChatUser) return alert("Please select a chat first!");
     
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    // We now target the active chat user specifically
-    const payload = JSON.stringify({user:myUsername, content, type, time, fname, target: activeChatUser});
+    const msgId = "msg_" + Date.now().toString() + Math.random().toString(36).substr(2, 5); // Generate unique ID
+    
+    const payload = JSON.stringify({user:myUsername, content, type, time, fname, target: activeChatUser, id: msgId});
     const enc = await encrypt(payload, secretKey);
     ws.send(enc);
     
-    // Save to local history
-    saveMessage(activeChatUser, { sender: "You", content: content, time: time, type: type, fname: fname });
-    
-    renderMsg("You", content, "my-message", time, type, fname);
+    saveMessage(activeChatUser, { id: msgId, sender: "You", content: content, time: time, type: type, fname: fname, status: 'sent' });
+    renderMsg("You", content, "my-message", time, type, fname, msgId, 'sent');
 }
 
 // --- CALL BUTTON (WEBRTC) ---
 document.getElementById('callBtn').onclick = async () => {
     if (!activeChatUser) return alert("Select a contact to call.");
-    
     document.getElementById("video-container").style.display = "flex";
     try {
         mediaStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
         document.getElementById("localVideo").srcObject = mediaStream;
-        
         pc = new RTCPeerConnection(config);
         mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
-        
         pc.onicecandidate = e => e.candidate && sendSignal({type:"candidate", candidate:e.candidate, target: activeChatUser});
         pc.ontrack = e => document.getElementById("remoteVideo").srcObject = e.streams[0];
-        
         const off = await pc.createOffer();
         await pc.setLocalDescription(off);
         sendSignal({type:"offer", offer:off, target: activeChatUser});
@@ -312,19 +321,14 @@ document.getElementById('callBtn').onclick = async () => {
 
 async function handleSignal(d) {
     if (d.type === "offer") {
-        if (!confirm(`Incoming video call from ${d.user}. Answer?`)) {
-            sendSignal({ type: "hangup", target: d.user });
-            return;
-        }
+        if (!confirm(`Incoming video call from ${d.user}. Answer?`)) return sendSignal({ type: "hangup", target: d.user });
         document.getElementById("video-container").style.display = "flex";
         mediaStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
         document.getElementById("localVideo").srcObject = mediaStream;
-        
         pc = new RTCPeerConnection(config);
         mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
         pc.onicecandidate = e => e.candidate && sendSignal({type:"candidate", candidate:e.candidate, target: d.user});
         pc.ontrack = e => document.getElementById("remoteVideo").srcObject = e.streams[0];
-        
         await pc.setRemoteDescription(new RTCSessionDescription(d.offer));
         const ans = await pc.createAnswer();
         await pc.setLocalDescription(ans);
@@ -334,8 +338,7 @@ async function handleSignal(d) {
     } else if (d.type === "candidate") {
         await pc.addIceCandidate(new RTCIceCandidate(d.candidate));
     } else if (d.type === "hangup") {
-        endCall(false);
-        alert(`${d.user} ended the call.`);
+        endCall(false); alert(`${d.user} ended the call.`);
     }
 }
 
@@ -394,4 +397,3 @@ document.getElementById("recordBtn").onclick = async function() {
         } catch (err) { alert("Mic denied."); }
     }
 };
-

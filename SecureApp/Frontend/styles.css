@@ -245,3 +245,28 @@ audio { height: 40px; width: 250px; outline: none; border-radius: 20px; }
     display: flex;
     gap: 20px;
 }
+
+/* --- MESSAGE FOOTER & READ RECEIPTS --- */
+.msg-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    margin-left: 15px;
+}
+.timestamp { 
+    font-size: 0.65rem; 
+    color: rgba(255,255,255,0.6); 
+    margin: 0;
+}
+body.light-mode .timestamp { 
+    color: rgba(0,0,0,0.4); 
+}
+.msg-status { 
+    font-size: 0.75rem; 
+    font-weight: bold; 
+    line-height: 1;
+}
+.tick-sent { color: #8696a0; } /* Grey Single Tick */
+.tick-read { color: #53bdeb; } /* WhatsApp Blue Double Tick */
