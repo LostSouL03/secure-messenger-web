@@ -397,3 +397,29 @@ document.getElementById("recordBtn").onclick = async function() {
         } catch (err) { alert("Mic denied."); }
     }
 };
+
+// --- DELETE CHAT LOGIC ---
+document.getElementById('deleteChatBtn').onclick = () => {
+    if (!activeChatUser) return;
+    
+    // Ask for confirmation before wiping data
+    if (confirm(`Are you sure you want to delete your chat with ${activeChatUser}? This will erase all message history and remove them from your contacts.`)) {
+        
+        // 1. Remove from contacts list & save
+        contacts.delete(activeChatUser);
+        localStorage.setItem('chat_contacts', JSON.stringify([...contacts]));
+        
+        // 2. Remove from local chat history & save
+        delete chatHistory[activeChatUser];
+        localStorage.setItem('chat_history', JSON.stringify(chatHistory));
+        
+        // 3. Remove their name from the sidebar UI
+        const contactEl = document.getElementById(`contact-${activeChatUser}`);
+        if (contactEl) contactEl.remove();
+        
+        // 4. Clear the active chat view and return to the empty state
+        activeChatUser = null;
+        document.getElementById('active-chat-area').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'flex';
+    }
+};

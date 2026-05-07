@@ -268,5 +268,17 @@ body.light-mode .timestamp {
     font-weight: bold; 
     line-height: 1;
 }
+
 .tick-sent { color: #8696a0; } /* Grey Single Tick */
 .tick-read { color: #53bdeb; } /* WhatsApp Blue Double Tick */
+
+/* --- CHAT HEADER ACTIONS --- */
+.chat-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.delete-trigger:hover {
+    background: rgba(241, 92, 109, 0.1) !important; /* Faint red background */
+    color: #f15c6d !important;
+}
