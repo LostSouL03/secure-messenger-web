@@ -98,7 +98,19 @@ body.light-mode ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); }
 .sidebar-header { padding: 10px 16px; background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box; }
 .header-left { display: flex; align-items: center; gap: 10px; }
 .header-right { display: flex; gap: 5px; align-items: center; }
-.my-avatar { width: 40px; height: 40px; border-radius: 50%; background: #667781; }
+.my-avatar { 
+    width: 40px; 
+    height: 40px; 
+    border-radius: 50%; 
+    background: #667781; 
+    display: flex;          /* Added to align text */
+    align-items: center;    /* Centers vertically */
+    justify-content: center;/* Centers horizontally */
+    color: white;           /* Makes the letter white */
+    font-weight: bold;      /* Makes it match the others */
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
 .chats-title { font-weight: 600; font-size: 1.1rem; }
 #relay-badge { color: var(--accent); font-size: 0.8em; }
 #gear-btn, #add-contact-btn { background: none; border: none; font-size: 1.2rem; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.2s; }
