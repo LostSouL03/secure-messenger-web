@@ -31,6 +31,10 @@ document.getElementById('loginBtn').onclick = () => {
     
     if (errorBox) { errorBox.style.display = "none"; errorBox.innerText = ""; }
 
+    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+    }
+
     if (!myUsername || !secretKey) {
         if (errorBox) { errorBox.innerText = "Credentials required."; errorBox.style.display = "block"; }
         return;
@@ -108,11 +112,20 @@ document.getElementById('loginBtn').onclick = () => {
                 // Save incoming message
                 saveMessage(data.user, { id: data.id, sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
                 
-                if (activeChatUser === data.user) {
+                if (activeChatUser === data.user && !document.hidden) {
+                    // You are looking right at the chat, render it and send read receipt
                     renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname, data.id, null);
-                    // Since we are looking at the chat, instantly send a read receipt back!
                     sendReadReceipt(data.user, data.id);
+                } else {
+                    // --- NEW: Trigger Notification & Unread Badge ---
+                    notifyUser(data.user, data.type, data.content);
+                    
+                    const subtitle = document.getElementById(`subtitle-${data.user}`);
+                    if (subtitle && !subtitle.querySelector('.typing-indicator')) {
+                        subtitle.innerHTML = `<span style="color: var(--accent); font-weight: bold;">New message</span>`;
+                    }
                 }
+                
                 hideTyping(data.user);
             }
         }
@@ -423,3 +436,32 @@ document.getElementById('deleteChatBtn').onclick = () => {
         document.getElementById('empty-state').style.display = 'flex';
     }
 };
+
+// --- BROWSER NOTIFICATIONS ---
+function notifyUser(sender, messageType, content) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        // Only notify if the tab is hidden OR you are looking at a different chat
+        if (document.hidden || activeChatUser !== sender) {
+            
+            // Format the text based on what was sent
+            let previewText = content;
+            if (messageType === "audio") previewText = "🎤 Sent a voice message";
+            if (messageType === "file" && content.startsWith("data:image/")) previewText = "📷 Sent an image";
+            else if (messageType === "file") previewText = "📎 Sent a file";
+
+            const notification = new Notification(`New message from ${sender}`, {
+                body: previewText,
+                // Uses a simple speech bubble emoji as the icon
+                icon: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💬</text></svg>'
+            });
+
+            // When you click the desktop notification, focus the window and open the chat
+            notification.onclick = function() {
+                window.focus();
+                const contactEl = document.getElementById(`contact-${sender}`);
+                if (contactEl) contactEl.click();
+                this.close();
+            };
+        }
+    }
+}
