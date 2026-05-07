@@ -1,6 +1,10 @@
 let ws, myUsername, secretKey;
 let mediaRecorder, audioChunks = [];
 let contacts = new Set(JSON.parse(localStorage.getItem('chat_contacts') || '[]'));
+
+// NEW: Message History and Active Chat tracking
+let chatHistory = JSON.parse(localStorage.getItem('chat_history') || '{}');
+let activeChatUser = null; 
 let typingTimeout;
 
 // WebRTC Variables
@@ -43,7 +47,7 @@ document.getElementById('loginBtn').onclick = () => {
         if (!dec) return;
         const data = JSON.parse(dec);
         
-        // --- 1. Handshake logic (Adding Contacts) ---
+        // 1. Handshake logic (Adding Contacts)
         if (data.type === 'ping' && data.target === myUsername) {
             encrypt(JSON.stringify({ user: myUsername, type: 'pong', target: data.user }), secretKey).then(enc => ws.send(enc));
             return;
@@ -55,20 +59,27 @@ document.getElementById('loginBtn').onclick = () => {
             return;
         }
 
-        // --- 2. WebRTC Call Signals ---
+        // 2. WebRTC Call Signals
         if (data.isSignal && data.target === myUsername) {
             handleSignal(data);
             return;
         }
 
-        // --- 3. Chat Messages & Typing ---
+        // 3. Chat Messages & Typing
         if (data.user !== myUsername && (!data.target || data.target === myUsername || data.target === "all")) {
             if (data.type === "typing") {
                 showTyping(data.user);
             } else {
                 addContact(data.user);
                 updateStatus(data.user, true);
-                renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+                
+                // SAVE MESSAGE TO HISTORY
+                saveMessage(data.user, { sender: data.user, content: data.content, time: data.time, type: data.type, fname: data.fname });
+                
+                // ONLY render if we are currently looking at their chat
+                if (activeChatUser === data.user) {
+                    renderMsg(data.user, data.content, "partner-message", data.time, data.type, data.fname);
+                }
                 hideTyping(data.user);
             }
         }
@@ -85,11 +96,8 @@ function promptAddContact() {
     if (!newContact || newContact.trim() === "" || newContact.trim() === myUsername) return;
     
     pendingContact = newContact.trim();
-    
-    // Broadcast a ping to search for the user
     encrypt(JSON.stringify({ user: myUsername, type: 'ping', target: pendingContact }), secretKey).then(enc => ws.send(enc));
     
-    // If no pong comes back in 3 seconds, they are offline
     pendingAddTimeout = setTimeout(() => {
         alert(`User '${pendingContact}' is not online or does not exist.`);
         pendingContact = null;
@@ -109,6 +117,7 @@ function addContact(u) {
     displayContact(u);
 }
 
+// --- SWITCHING CHATS & DISPLAYING CONTACTS ---
 function displayContact(u) {
     const list = document.getElementById('contact-list');
     const item = document.createElement('div');
@@ -126,20 +135,41 @@ function displayContact(u) {
             <div class="contact-row-bottom" id="subtitle-${u}"></div>
         </div>
     `;
+    
     item.onclick = () => {
+        // 1. Set the active user
+        activeChatUser = u;
+        
+        // 2. Update the UI layout
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('active-chat-area').style.display = 'flex';
         document.getElementById('active-chat-user').innerText = u;
         document.getElementById('active-chat-avatar').innerText = initial;
         
-        // Update "Online" text logic
         const isOnline = item.querySelector('.status-dot').classList.contains('status-online');
         document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
         
         document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
+        
+        // 3. LOAD MESSAGE HISTORY FOR THIS USER
+        const msgContainer = document.getElementById("messages");
+        msgContainer.innerHTML = ""; // Clear current screen
+        
+        const history = chatHistory[activeChatUser] || [];
+        history.forEach(msg => {
+            const cls = msg.sender === "You" ? "my-message" : "partner-message";
+            renderMsg(msg.sender, msg.content, cls, msg.time, msg.type, msg.fname);
+        });
     };
     list.appendChild(item);
+}
+
+// --- MESSAGE HISTORY SAVER ---
+function saveMessage(contact, msgObj) {
+    if (!chatHistory[contact]) chatHistory[contact] = [];
+    chatHistory[contact].push(msgObj);
+    localStorage.setItem('chat_history', JSON.stringify(chatHistory));
 }
 
 // --- STATUS & TYPING ---
@@ -147,15 +177,15 @@ function updateStatus(user, isOnline) {
     const el = document.getElementById(`contact-${user}`);
     if (el) {
         el.querySelector('.status-dot').classList.toggle('status-online', isOnline);
-        if (document.getElementById('active-chat-user').innerText === user) {
+        if (activeChatUser === user) {
             document.getElementById('active-chat-status').innerText = isOnline ? 'Online' : '';
         }
     }
 }
 
 function sendTypingStatus() {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        encrypt(JSON.stringify({ user: myUsername, type: "typing", target: "all" }), secretKey).then(enc => ws.send(enc));
+    if (ws && ws.readyState === WebSocket.OPEN && activeChatUser) {
+        encrypt(JSON.stringify({ user: myUsername, type: "typing", target: activeChatUser }), secretKey).then(enc => ws.send(enc));
     }
 }
 
@@ -173,7 +203,6 @@ function hideTyping(user) {
     if (subtitle) subtitle.innerHTML = '';
 }
 
-// Input Swapping logic
 document.getElementById('messageInput').addEventListener('input', function() {
     const mic = document.getElementById('recordBtn');
     const snd = document.getElementById('sendBtn');
@@ -187,7 +216,7 @@ document.getElementById('messageInput').addEventListener('input', function() {
     }
 });
 
-// --- RENDER & SEND MESSAGES (FIXED IMAGES) ---
+// --- RENDER & SEND MESSAGES ---
 function renderMsg(user, content, cls, time, type, fname) {
     const div = document.createElement("div");
     div.className = `message ${cls}`;
@@ -198,7 +227,6 @@ function renderMsg(user, content, cls, time, type, fname) {
     } else if (type === "audio") {
         inner += `<audio controls src="${content}"></audio>`;
     } else if (type === "file") {
-        // Detect Images and render them natively
         if (content.startsWith('data:image/')) {
             inner += `<img src="${content}" class="chat-image" onclick="window.open('${content}')"><br>`;
         }
@@ -212,17 +240,23 @@ function renderMsg(user, content, cls, time, type, fname) {
 }
 
 async function send(content, type="text", fname="") {
+    if (!activeChatUser) return alert("Please select a chat first!");
+    
     const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    const payload = JSON.stringify({user:myUsername, content, type, time, fname, target:"all"});
+    // We now target the active chat user specifically
+    const payload = JSON.stringify({user:myUsername, content, type, time, fname, target: activeChatUser});
     const enc = await encrypt(payload, secretKey);
     ws.send(enc);
+    
+    // Save to local history
+    saveMessage(activeChatUser, { sender: "You", content: content, time: time, type: type, fname: fname });
+    
     renderMsg("You", content, "my-message", time, type, fname);
 }
 
 // --- CALL BUTTON (WEBRTC) ---
 document.getElementById('callBtn').onclick = async () => {
-    const target = document.getElementById('active-chat-user').innerText;
-    if (!target) return alert("Select a contact to call.");
+    if (!activeChatUser) return alert("Select a contact to call.");
     
     document.getElementById("video-container").style.display = "flex";
     try {
@@ -232,12 +266,12 @@ document.getElementById('callBtn').onclick = async () => {
         pc = new RTCPeerConnection(config);
         mediaStream.getTracks().forEach(t => pc.addTrack(t, mediaStream));
         
-        pc.onicecandidate = e => e.candidate && sendSignal({type:"candidate", candidate:e.candidate, target});
+        pc.onicecandidate = e => e.candidate && sendSignal({type:"candidate", candidate:e.candidate, target: activeChatUser});
         pc.ontrack = e => document.getElementById("remoteVideo").srcObject = e.streams[0];
         
         const off = await pc.createOffer();
         await pc.setLocalDescription(off);
-        sendSignal({type:"offer", offer:off, target});
+        sendSignal({type:"offer", offer:off, target: activeChatUser});
     } catch (e) { alert("Camera/Mic access denied!"); document.getElementById("video-container").style.display = "none"; }
 };
 
@@ -277,8 +311,7 @@ function sendSignal(s) {
 
 document.getElementById('hangupBtn').onclick = () => endCall(true);
 function endCall(notify=true) {
-    const target = document.getElementById('active-chat-user').innerText;
-    if (notify && target) sendSignal({type:"hangup", target});
+    if (notify && activeChatUser) sendSignal({type:"hangup", target: activeChatUser});
     if (pc) pc.close();
     if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
     document.getElementById("video-container").style.display = "none";
@@ -287,7 +320,12 @@ function endCall(notify=true) {
 // --- STANDARD CONTROLS ---
 document.getElementById("sendBtn").onclick = () => {
     const i = document.getElementById("messageInput");
-    if(i.value.trim()) { send(i.value.trim()); i.value = ""; document.getElementById('recordBtn').style.display = 'block'; document.getElementById('sendBtn').style.display = 'none';}
+    if(i.value.trim()) { 
+        send(i.value.trim()); 
+        i.value = ""; 
+        document.getElementById('recordBtn').style.display = 'block'; 
+        document.getElementById('sendBtn').style.display = 'none';
+    }
 };
 document.getElementById("messageInput").onkeydown = (e) => { if(e.key === "Enter") document.getElementById("sendBtn").click(); };
 document.getElementById("attachBtn").onclick = () => document.getElementById("fileInput").click();
