@@ -1,16 +1,15 @@
 # Secure Messenger Web 🔐
 
-A browser-based real-time messaging application built with **HTML, CSS, JavaScript, FastAPI, and WebSockets**.
-
-The application was developed as a hands-on web development project exploring real-time communication, client-side encryption, browser APIs, responsive UI design, and peer-to-peer video communication.
-
-> **Note:** This is a portfolio/learning project. The encryption implementation demonstrates client-side encrypted messaging but has not undergone an independent security audit and should not be used for highly sensitive communications.
-
 <img width="1874" height="936" alt="image" src="https://github.com/user-attachments/assets/f0ccdfef-ddd3-40a7-8746-6823cd2db8d4" />
 <img width="525" height="237" alt="image" src="https://github.com/user-attachments/assets/f2a20494-6ef2-41b1-a53f-3ccff7dd28da" />
 <img width="1873" height="938" alt="image" src="https://github.com/user-attachments/assets/cb25c165-0924-4b09-a619-268db7ad4863" />
 <img width="1872" height="938" alt="image" src="https://github.com/user-attachments/assets/d758197b-aa49-4af1-a135-1687fe9cafb6" />
 
+A browser-based real-time messaging application built with **HTML, CSS, JavaScript, FastAPI, and WebSockets**.
+
+The application was developed as a hands-on web development project exploring real-time communication, client-side encryption, browser APIs, responsive UI design, and peer-to-peer video communication.
+
+> **Note:** This is a portfolio/learning project. The encryption implementation demonstrates client-side encrypted messaging but has not undergone an independent security audit and should not be used for highly sensitive communications.
 
 
 ## ✨ Features
