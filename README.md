@@ -1,9 +1,9 @@
 # Secure Messenger Web 🔐
 
-<img width="1874" height="936" alt="image" src="https://github.com/user-attachments/assets/f0ccdfef-ddd3-40a7-8746-6823cd2db8d4" />
-<img width="525" height="237" alt="image" src="https://github.com/user-attachments/assets/f2a20494-6ef2-41b1-a53f-3ccff7dd28da" />
-<img width="1873" height="938" alt="image" src="https://github.com/user-attachments/assets/cb25c165-0924-4b09-a619-268db7ad4863" />
-<img width="1872" height="938" alt="image" src="https://github.com/user-attachments/assets/d758197b-aa49-4af1-a135-1687fe9cafb6" />
+<img width="1872" height="935" alt="image" src="https://github.com/user-attachments/assets/55a00de7-e7da-4888-8d81-c503370802e5" />
+<img width="1873" height="934" alt="image" src="https://github.com/user-attachments/assets/156973f3-beac-40cf-9e2b-e7e6bd37859d" />
+<img width="1876" height="933" alt="image" src="https://github.com/user-attachments/assets/a499f8d5-2b7d-4920-bea4-a1bca1ec0785" />
+<img width="1873" height="932" alt="image" src="https://github.com/user-attachments/assets/00ec21a5-3b14-4854-b733-f279d5ba2eb9" />
 
 A browser-based real-time messaging application built with **HTML, CSS, JavaScript, FastAPI, and WebSockets**.
 
